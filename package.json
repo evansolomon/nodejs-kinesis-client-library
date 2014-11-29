@@ -1,0 +1,22 @@
+{
+  "name": "kinesis-client-library",
+  "version": "0.1.0",
+  "description": "Easily process Kinesis streams and scale up or down as shards split or merge.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Evan Solomon",
+  "license": "MIT",
+  "bin": {
+    "launch-cluster": "./bin/launch"
+  },
+  "dependencies": {
+    "async": "^0.9.0",
+    "aws-sdk": "^2.0.29",
+    "bunyan": "^1.2.3",
+    "minimist": "^1.1.0",
+    "underscore": "^1.7.0",
+    "vogels": "^0.12.0"
+  }
+}
