@@ -1,4 +1,20 @@
 #!/usr/bin/env node
 
-var cli = require('../lib/cli')
-cli.run(process.argv.slice(2))
+var path = require('path')
+var child_process = require('child_process')
+var bunyan = require('bunyan')
+
+var logger = bunyan.createLogger({name: 'KinesisClusterLauncher'})
+var args = process.argv.slice(2)
+
+function fork() {
+  logger.info('Forking CLI')
+  var proc = child_process.fork(path.resolve(__dirname, '../lib/cli'), args)
+
+  proc.on('exit', function (code) {
+    logger.info({exitCode: code}, 'CLI exited, restarting in 5 seconds')
+    setTimeout(fork, 5000)
+  })
+}
+
+fork()
