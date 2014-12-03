@@ -52,7 +52,7 @@ ConsumerCluster.prototype.init = function () {
       ClusterModel.createTable(_this.opts.tableName, _this.opts.awsConfig, done)
     }]
   }, function (err) {
-    if (err) return logAndEmitError(err, 'Error ensuring Dynamo table exists')
+    if (err) return _this.logAndEmitError(err, 'Error ensuring Dynamo table exists')
 
     _this._bindListeners()
     _this._loopReportClusterToNetwork()
