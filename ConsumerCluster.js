@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Cluster manager.
+ */
+
 var path = require('path')
 var EventEmitter = require('events').EventEmitter
 var util = require('util')
@@ -8,13 +12,18 @@ var _ = require('underscore')
 var bunyan = require('bunyan')
 
 var server = require('./lib/server')
-var ClusterModel = require('./lib/models/Cluster')
-var LeaseModel = require('./lib/models/Lease')
-var awsFactory = require('./lib/aws/factory')
+var models = require('./lib/models')
+var aws = require('./lib/aws/factory')
 var kinesis = require('./lib/aws/kinesis')
 
 module.exports = ConsumerCluster
 
+/**
+ * Cluster of consumers.
+ *
+ * @param {string}  pathToConsumer  Filesystem path to consumer script.
+ * @param {Object}  opts
+ */
 function ConsumerCluster(pathToConsumer, opts) {
   EventEmitter.call(this)
 
@@ -26,9 +35,9 @@ function ConsumerCluster(pathToConsumer, opts) {
     silent: true
   })
 
-  this.cluster = new ClusterModel(opts.tableName, opts.awsConfig)
+  this.cluster = new models.Cluster(opts.tableName, opts.awsConfig)
 
-  this.client = awsFactory(opts.awsConfig, 'Kinesis')
+  this.client = aws.create(opts.awsConfig, 'Kinesis')
 
   this.externalNetwork = {}
   this.consumers = {}
@@ -38,18 +47,21 @@ function ConsumerCluster(pathToConsumer, opts) {
 }
 util.inherits(ConsumerCluster, EventEmitter)
 
+/**
+ * Setup the initial cluster state.
+ */
 ConsumerCluster.prototype.init = function () {
   var _this = this
 
   async.auto({
     tableExists: function (done) {
-      ClusterModel.tableExists(_this.opts.tableName, _this.opts.awsConfig, done)
+      models.Cluster.tableExists(_this.opts.tableName, _this.opts.awsConfig, done)
     },
 
     createTable: ['tableExists', function (done, data) {
       if (data.tableExists) return done()
       _this.logger.info({table: _this.opts.tableName}, 'Creating DynamoDB table')
-      ClusterModel.createTable(_this.opts.tableName, _this.opts.awsConfig, done)
+      models.Cluster.createTable(_this.opts.tableName, _this.opts.awsConfig, done)
     }]
   }, function (err) {
     if (err) return _this.logAndEmitError(err, 'Error ensuring Dynamo table exists')
@@ -60,6 +72,11 @@ ConsumerCluster.prototype.init = function () {
   })
 }
 
+/**
+ * Run an HTTP server. Useful as a health check.
+ *
+ * @param {(string|number)}  port
+ */
 ConsumerCluster.prototype.serveHttp = function (port) {
   this.logger.debug('Starting HTTP server on port %s', port)
   server.create(port, function () {
@@ -67,6 +84,9 @@ ConsumerCluster.prototype.serveHttp = function (port) {
   }.bind(this))
 }
 
+/**
+ * Setup listeners fro internal events.
+ */
 ConsumerCluster.prototype._bindListeners = function () {
   var _this = this
 
@@ -88,7 +108,8 @@ ConsumerCluster.prototype._bindListeners = function () {
 }
 
 /**
- * Compare cluster state to external network
+ * Compare cluster state to external network to figure out if we should try to
+ * change our shard allocation.
  */
 ConsumerCluster.prototype._shouldTryToAcquireMoreShards = function () {
   if (this.consumerIds.length === 0) {
@@ -113,6 +134,10 @@ ConsumerCluster.prototype._shouldTryToAcquireMoreShards = function () {
   return this.consumerIds.length <= lowestInOutterNetwork
 }
 
+/**
+ * Determine if we have too many shards compared to the rest of the network.
+ * @return {Boolean}
+ */
 ConsumerCluster.prototype._hasTooManyShards = function () {
   var externalNetwork = this.externalNetwork
 
@@ -133,9 +158,8 @@ ConsumerCluster.prototype._hasTooManyShards = function () {
 
 
 /**
- * Get data about unleased shards
+ * Fetch data about unleased shards.
  */
-
 ConsumerCluster.prototype.fetchAvailableShard = function () {
   var _this = this
   async.parallel({
@@ -148,7 +172,7 @@ ConsumerCluster.prototype.fetchAvailableShard = function () {
       })
     },
     leases: function (done) {
-      LeaseModel.fetchAll(_this.opts.tableName, _this.opts.awsConfig, function (err, leases) {
+      models.Lease.fetchAll(_this.opts.tableName, _this.opts.awsConfig, function (err, leases) {
         if (err) return done(err)
         done(null, leases.Items)
       })
@@ -192,11 +216,12 @@ ConsumerCluster.prototype.fetchAvailableShard = function () {
   })
 }
 
-
 /**
- * Create and manage consumer processes
+ * Create a new consumer processes.
+ *
+ * @param {string}  shardId
+ * @param {number}  leaseCounter
  */
-
 ConsumerCluster.prototype.spawn = function (shardId, leaseCounter) {
   if (! shardId) {
     throw new Error('Cannot spawn consumer without shard ID')
@@ -223,6 +248,10 @@ ConsumerCluster.prototype.spawn = function (shardId, leaseCounter) {
   this._addConsumer(consumer)
 }
 
+/**
+ * Add a consumer to the cluster.
+ * @param {ChildProcess}  consumer
+ */
 ConsumerCluster.prototype._addConsumer = function (consumer) {
   this.consumerIds.push(consumer.id)
   this.consumers[consumer.id] = consumer
@@ -234,6 +263,9 @@ ConsumerCluster.prototype._addConsumer = function (consumer) {
   }.bind(this))
 }
 
+/**
+ * Kill a consumer in the cluser.
+ */
 ConsumerCluster.prototype._killConsumer = function () {
   var id = this.consumerIds[0]
   this.logger.info({id: id}, 'Killing consumer')
@@ -242,7 +274,7 @@ ConsumerCluster.prototype._killConsumer = function () {
 
 
 /**
- * Keep external network state up to date in this cluster
+ * Continuously fetch data about the rest of the network.
  */
 ConsumerCluster.prototype._loopFetchExternalNetwork = function () {
   var _this = this
@@ -262,6 +294,10 @@ ConsumerCluster.prototype._loopFetchExternalNetwork = function () {
   async.forever(fetchThenWait, handleError)
 }
 
+/**
+ * Fetch data about the rest of the network.
+ * @param  {Function}  callback
+ */
 ConsumerCluster.prototype._fetchExternalNetwork = function (callback) {
   var _this = this
 
@@ -283,7 +319,7 @@ ConsumerCluster.prototype._fetchExternalNetwork = function (callback) {
 
 
 /**
- * Keep cluster state up to date in network DB
+ * Continuously publish data about this cluster to the network.
  */
 ConsumerCluster.prototype._loopReportClusterToNetwork = function () {
   var _this = this
@@ -302,11 +338,18 @@ ConsumerCluster.prototype._loopReportClusterToNetwork = function () {
   async.forever(reportThenWait, handleError)
 }
 
+/**
+ * Publish data about this cluster to the nework.
+ * @param {Function}  callback
+ */
 ConsumerCluster.prototype._reportClusterToNetwork = function (callback) {
   this.logger.debug({consumers: this.consumerIds.length}, 'Rerpoting cluster to network')
   this.cluster.reportActiveConsumers(this.consumerIds.length, callback)
 }
 
+/**
+ * Garbage collect expired clusters from the network.
+ */
 ConsumerCluster.prototype._garbageCollectClusters = function () {
   if (Date.now() < (this.lastGarbageCollectedAt + (1000 * 60))) return
 
@@ -319,6 +362,12 @@ ConsumerCluster.prototype._garbageCollectClusters = function () {
   })
 }
 
+/**
+ * Error helper.
+ *
+ * @param {Error}   err
+ * @param {string}  desc
+ */
 ConsumerCluster.prototype.logAndEmitError = function (err, desc) {
   this.logger.error(desc)
   this.logger.error(err)

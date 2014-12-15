@@ -1,17 +1,32 @@
+/**
+ * @fileoverview Extendable stream consumer.
+ */
+
 var util = require('util')
 
 var async = require('async')
 var bunyan = require('bunyan')
 var _ = require('underscore')
 
-var Lease = require('./lib/models/Lease')
-var awsFactory = require('./lib/aws/factory')
+var models = require('./lib/models')
+var aws = require('./lib/aws/factory')
 var kinesis = require('./lib/aws/kinesis')
 
 module.exports = AbstractConsumer
 
+/**
+ * Stream consumer, meant to be extended.
+ *
+ * @param {{
+ *   streamName: string,
+ *   shardId: string,
+ *   leaseCounter: number=,
+ *   tableName: string,
+ *   awsConfig: Object=
+ * }} opts
+ */
 function AbstractConsumer(opts) {
-  this.client = awsFactory(opts.awsConfig, 'Kinesis')
+  this.client = aws.create(opts.awsConfig, 'Kinesis')
 
   this.streamName = opts.streamName
   this.shardId = opts.shardId
@@ -26,6 +41,9 @@ function AbstractConsumer(opts) {
   })
 }
 
+/**
+ * Setup initial consumer state.
+ */
 AbstractConsumer.prototype.init = function () {
   var _this = this
   this._setupLease()
@@ -53,10 +71,16 @@ AbstractConsumer.prototype.init = function () {
   })
 }
 
+/**
+ * Log helper.
+ */
 AbstractConsumer.prototype.log = function () {
   this.logger.info.apply(this.logger, arguments)
 }
 
+/**
+ * Continuously fetch records from the stream.
+ */
 AbstractConsumer.prototype._loopGetRecords = function () {
   var _this = this
   var maxCallFrequency = 1000
@@ -82,6 +106,9 @@ AbstractConsumer.prototype._loopGetRecords = function () {
   })
 }
 
+/**
+ * Continuously update this consumer's lease reservation.
+ */
 AbstractConsumer.prototype._loopReserveLease = function () {
   var _this = this
 
@@ -94,6 +121,10 @@ AbstractConsumer.prototype._loopReserveLease = function () {
   })
 }
 
+/**
+ * Setup the initial lease reservation state.
+ * @return {[type]} [description]
+ */
 AbstractConsumer.prototype._setupLease = function () {
   var id = this.shardId
   var leaseCounter = this.leaseCounter || null
@@ -102,14 +133,21 @@ AbstractConsumer.prototype._setupLease = function () {
 
   this.log({leaseCounter: leaseCounter, tableName: tableName}, 'Setting up lease')
 
-  this.lease = new Lease(id, leaseCounter, tableName, awsConfig)
+  this.lease = new models.Lease(id, leaseCounter, tableName, awsConfig)
 }
 
+/**
+ * Update the lease in the network database.
+ * @param {Function}  callback
+ */
 AbstractConsumer.prototype._reserveLease = function (callback) {
   this.logger.debug('Reserving lease')
   this.lease.reserve(callback)
 }
 
+/**
+ * Mark the consumer's shard as finished, then exit.
+ */
 AbstractConsumer.prototype._markFinished = function () {
   var _this = this
   this.log('Marking shard as finished')
@@ -119,6 +157,10 @@ AbstractConsumer.prototype._markFinished = function () {
   })
 }
 
+/**
+ * Get records from the stream and wait for them to be processed.
+ * @param {Function} callback
+ */
 AbstractConsumer.prototype._getRecords = function (callback) {
   var _this = this
 
@@ -160,6 +202,12 @@ AbstractConsumer.prototype._getRecords = function (callback) {
   })
 }
 
+/**
+ * Wrap the child's processRecords method to handle checkpointing.
+ *
+ * @param {Array}     records
+ * @param {Function}  callback
+ */
 AbstractConsumer.prototype._processRecords = function (records, callback) {
   var _this = this
   this.processRecords(records, function (err, checkpointSequenceNumber) {
@@ -179,20 +227,58 @@ AbstractConsumer.prototype._processRecords = function (records, callback) {
   })
 }
 
+/**
+ * Initialize the consumer, called before record processing starts. This method may be
+ * implemented by the child. If it is implemented, the callback must be called for
+ * processing to begin.
+ *
+ * @abstract
+ * @param {Function}  callback
+ */
 AbstractConsumer.prototype.initialize = function (callback) {
   this.log('No initialize method defined, skipping')
   callback()
 }
 
-AbstractConsumer.prototype.processRecords = function () {
+/**
+ * @callback processRecordsCallback
+ * @param {Error=} error
+ * @param {Array.<{{
+ *   Data: Buffer,
+ *   PartitionKey: string,
+ *   SequenceNumber: string
+ * }}>} records
+ */
+
+/**
+ * Process a batch of records. This method must be implemented by the child.
+ *
+ * @abstract
+ * @param {processRecordsCallback} callback
+ */
+AbstractConsumer.prototype.processRecords = function (callback) {
   throw new Error('processRecords must be defined by the consumer class')
 }
 
+/**
+ * Shutdown the consumer, called before a consumer exits. This method may be implemented
+ * by the child. If it is implemented the callback must be called without 30 seconds or
+ * the process will force exit.
+ *
+ * @abstract
+ * @param {Function}  callback
+ */
 AbstractConsumer.prototype.shutdown = function (callback) {
   this.log('No shutdown method defined, skipping')
   callback()
 }
 
+/**
+ * Get a new shard iterator from Kinesis.
+ *
+ * @param {string=}   sequenceNumber
+ * @param {Function}  callback
+ */
 AbstractConsumer.prototype._updateShardIterator = function (sequenceNumber, callback) {
   var _this = this
   var type = sequenceNumber ? 'AFTER_SEQUENCE_NUMBER' : 'TRIM_HORIZON'
@@ -207,6 +293,11 @@ AbstractConsumer.prototype._updateShardIterator = function (sequenceNumber, call
   })
 }
 
+/**
+ * Exit the consumer.
+ *
+ * @param  {Error=} err
+ */
 AbstractConsumer.prototype._exit = function (err) {
   var _this = this
   if (err) {
@@ -227,7 +318,13 @@ AbstractConsumer.prototype._exit = function (err) {
 }
 
 
-
+/**
+ * Create a child consumer.
+ *
+ * @static
+ * @param  {{processRecords: Function, initialize: Function=, shutdown: Function=}} args
+ * @return {AbstractConsumer}
+ */
 AbstractConsumer.extend = function (args) {
   var opts = JSON.parse(process.env.CONSUMER_INSTANCE_OPTS)
   function Ctor() {
