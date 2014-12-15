@@ -1,0 +1,10 @@
+{
+  "node": true,
+  "asi": true,
+  "eqeqeq": false,
+  "eqnull": true,
+  "undef": true,
+  "newcap": true,
+  "trailing": true,
+  "indent": 2
+}
