@@ -11,6 +11,18 @@
   "bin": {
     "launch-kinesis-cluster": "./bin/launch"
   },
+  "homepage": "https://github.com/evansolomon/nodejs-kinesis-client-library",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/evansolomon/nodejs-kinesis-client-library.git"
+  },
+  "bugs": {
+    "url": "https://github.com/evansolomon/nodejs-kinesis-client-library/issues"
+  },
+  "keywords": [
+    "aws",
+    "kinesis"
+  ],
   "dependencies": {
     "async": "^0.9.0",
     "aws-sdk": "^2.0.29",
