@@ -63,7 +63,7 @@ AbstractConsumer.prototype.init = function () {
     _this.initialize.bind(_this)
   ], function (err) {
     if (err) {
-      return this._exit(err)
+      return _this._exit(err)
     }
 
     _this._loopGetRecords()
