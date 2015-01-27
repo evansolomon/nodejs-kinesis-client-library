@@ -50,6 +50,7 @@ Required flags:
 --stream [Kinesis stream name]
 
 Optional flags:
+--start-at [Starting iterator type] ("trim_horizon" or "latest", defaults to "trim_horizon")
 --aws.[option] [Option value]  (e.g. --aws.region us-west-2)
 --http [port]  (Start HTTP server, port default to $PORT)
 ```

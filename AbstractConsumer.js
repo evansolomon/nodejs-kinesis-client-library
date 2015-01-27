@@ -22,7 +22,8 @@ module.exports = AbstractConsumer
  *   shardId: string,
  *   leaseCounter: number=,
  *   tableName: string,
- *   awsConfig: Object=
+ *   awsConfig: Object=,
+ *   startingIteratorType: string=
  * }} opts
  */
 function AbstractConsumer(opts) {
@@ -34,12 +35,33 @@ function AbstractConsumer(opts) {
   this.tableName = opts.tableName
   this.awsConfig = opts.awsConfig
 
+  this.startingIteratorType = AbstractConsumer.ShardIteratorTypes[opts.startingIteratorType]
+  if (! this.startingIteratorType) {
+     this.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
+  }
+
   this.logger = bunyan.createLogger({
     name: 'KinesisConsumer',
     streamName: opts.streamName,
     shardId: opts.shardId
   })
 }
+
+/**
+ * @enum {string}
+ */
+AbstractConsumer.ShardIteratorTypes = {
+  AT_SEQUENCE_NUMBER: 'AT_SEQUENCE_NUMBER',
+  AFTER_SEQUENCE_NUMBER: 'AFTER_SEQUENCE_NUMBER',
+  TRIM_HORIZON: 'TRIM_HORIZON',
+  LATEST: 'LATEST'
+}
+
+/**
+ * @type {string}
+ * @const
+ */
+AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE = AbstractConsumer.ShardIteratorTypes.TRIM_HORIZON
 
 /**
  * Setup initial consumer state.
@@ -281,7 +303,12 @@ AbstractConsumer.prototype.shutdown = function (callback) {
  */
 AbstractConsumer.prototype._updateShardIterator = function (sequenceNumber, callback) {
   var _this = this
-  var type = sequenceNumber ? 'AFTER_SEQUENCE_NUMBER' : 'TRIM_HORIZON'
+  var type
+  if (sequenceNumber) {
+    type = AbstractConsumer.ShardIteratorTypes.AFTER_SEQUENCE_NUMBER
+  } else {
+    type = this.startingIteratorType
+  }
 
   this.log({iteratorType: type, sequenceNumber: sequenceNumber}, 'Updating shard iterator')
   kinesis.getShardIterator(this.client, this.streamName, this.shardId, type, sequenceNumber, function (err, data) {

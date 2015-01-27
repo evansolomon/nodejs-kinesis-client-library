@@ -232,6 +232,7 @@ ConsumerCluster.prototype.spawn = function (shardId, leaseCounter) {
     tableName: this.opts.tableName,
     awsConfig: this.opts.awsConfig,
     streamName: this.opts.streamName,
+    startingIteratorType: (this.opts.startingIteratorType || '').toUpperCase(),
     shardId: shardId,
     leaseCounter: leaseCounter
   }
