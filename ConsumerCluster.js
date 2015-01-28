@@ -378,7 +378,7 @@ ConsumerCluster.prototype._garbageCollectClusters = function () {
     if (garbageCollectedClusters.length) {
       this.logger.info('Garbage collected %d clusters', garbageCollectedClusters.length)
     }
-  }.bind)
+  }.bind(this))
 }
 
 /**
