@@ -370,8 +370,7 @@ ConsumerCluster.prototype._garbageCollectClusters = function () {
   this.lastGarbageCollectedAt = Date.now()
   this.cluster.garbageCollect(function (err, garbageCollectedClusters) {
     if (err) {
-      console.error('Error garbage collecting clusters, continuing cluster execution anyway')
-      console.error(err.stack)
+      this.logger.error(err, 'Error garbage collecting clusters, continuing cluster execution anyway')
       return
     }
 
