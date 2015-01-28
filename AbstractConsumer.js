@@ -27,13 +27,14 @@ module.exports = AbstractConsumer
  * }} opts
  */
 function AbstractConsumer(opts) {
-  this.client = aws.create(opts.awsConfig, 'Kinesis')
+  this.client = aws.create(opts.awsConfig, false, 'Kinesis')
 
   this.streamName = opts.streamName
   this.shardId = opts.shardId
   this.leaseCounter = opts.leaseCounter
   this.tableName = opts.tableName
   this.awsConfig = opts.awsConfig
+  this.localDynamo = opts.localDynamo
 
   this.startingIteratorType = AbstractConsumer.ShardIteratorTypes[opts.startingIteratorType]
   if (! this.startingIteratorType) {
@@ -152,10 +153,11 @@ AbstractConsumer.prototype._setupLease = function () {
   var leaseCounter = this.leaseCounter || null
   var tableName = this.tableName
   var awsConfig = this.awsConfig
+  var localDynamo = !! this.localDynamo
 
   this.log({leaseCounter: leaseCounter, tableName: tableName}, 'Setting up lease')
 
-  this.lease = new models.Lease(id, leaseCounter, tableName, awsConfig)
+  this.lease = new models.Lease(id, leaseCounter, tableName, awsConfig, localDynamo)
 }
 
 /**

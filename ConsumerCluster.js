@@ -35,9 +35,9 @@ function ConsumerCluster(pathToConsumer, opts) {
     silent: true
   })
 
-  this.cluster = new models.Cluster(opts.tableName, opts.awsConfig)
+  this.cluster = new models.Cluster(opts.tableName, opts.awsConfig, opts.localDynamo)
 
-  this.client = aws.create(opts.awsConfig, 'Kinesis')
+  this.client = aws.create(opts.awsConfig, false, 'Kinesis')
 
   this.externalNetwork = {}
   this.consumers = {}
@@ -55,7 +55,10 @@ ConsumerCluster.prototype.init = function () {
 
   async.auto({
     tableExists: function (done) {
-      models.Cluster.tableExists(_this.opts.tableName, _this.opts.awsConfig, done)
+      var tableName = _this.opts.tableName
+      var awsConfig = _this.opts.awsConfig
+      var localDynamo = _this.opts.localDynamo
+      models.Cluster.tableExists(tableName, awsConfig, localDynamo, done)
     },
 
     createTable: ['tableExists', function (done, data) {
@@ -64,9 +67,10 @@ ConsumerCluster.prototype.init = function () {
       var tableName = _this.opts.tableName
       var awsConfig = _this.opts.awsConfig
       var capacity = _this.opts.capacity || {}
+      var localDynamo = !! _this.opts.localDynamo
 
       _this.logger.info({table: tableName}, 'Creating DynamoDB table')
-      models.Cluster.createTable(tableName, awsConfig, capacity, done)
+      models.Cluster.createTable(tableName, awsConfig, capacity, localDynamo, done)
     }]
   }, function (err) {
     if (err) return _this.logAndEmitError(err, 'Error ensuring Dynamo table exists')
@@ -177,7 +181,10 @@ ConsumerCluster.prototype.fetchAvailableShard = function () {
       })
     },
     leases: function (done) {
-      models.Lease.fetchAll(_this.opts.tableName, _this.opts.awsConfig, function (err, leases) {
+      var tableName = _this.opts.tableName
+      var awsConfig = _this.opts.awsConfig
+      var localDynamo = !! _this.opts.localDynamo
+      models.Lease.fetchAll(tableName, awsConfig, localDynamo, function (err, leases) {
         if (err) return done(err)
         done(null, leases.Items)
       })
@@ -239,7 +246,8 @@ ConsumerCluster.prototype.spawn = function (shardId, leaseCounter) {
     streamName: this.opts.streamName,
     startingIteratorType: (this.opts.startingIteratorType || '').toUpperCase(),
     shardId: shardId,
-    leaseCounter: leaseCounter
+    leaseCounter: leaseCounter,
+    localDynamo: this.opts.localDynamo
   }
 
   var env = {

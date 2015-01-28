@@ -54,6 +54,8 @@ Optional flags:
 --capacity.[read|write] [Throughput] (DynamoDB throughput for *new* tables, defaults to 10 for each)
 --aws.[option] [Option value]  (e.g. --aws.region us-west-2)
 --http [port]  (Start HTTP server, port default to $PORT)
+--local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)
+--local-dynamo-directory (Directory to store local DB, defaults to temp directory)
 ```
 
 Notes:

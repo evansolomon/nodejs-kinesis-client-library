@@ -27,7 +27,9 @@
     "async": "^0.9.0",
     "aws-sdk": "^2.0.29",
     "bunyan": "^1.2.3",
+    "local-dynamo": "0.0.3",
     "minimist": "^1.1.0",
+    "mkdirp": "^0.5.0",
     "underscore": "^1.7.0",
     "vogels": "^0.12.0"
   },
