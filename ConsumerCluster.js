@@ -367,13 +367,18 @@ ConsumerCluster.prototype._reportClusterToNetwork = function (callback) {
 ConsumerCluster.prototype._garbageCollectClusters = function () {
   if (Date.now() < (this.lastGarbageCollectedAt + (1000 * 60))) return
 
-  this.logger.info('Garbage collecting clusters')
   this.lastGarbageCollectedAt = Date.now()
-  this.cluster.garbageCollect(function (err) {
-    if (! err) return
-    console.error('Error garbage collecting clusters, continuing cluster execution anyway')
-    console.error(err.stack)
-  })
+  this.cluster.garbageCollect(function (err, garbageCollectedClusters) {
+    if (err) {
+      console.error('Error garbage collecting clusters, continuing cluster execution anyway')
+      console.error(err.stack)
+      return
+    }
+
+    if (garbageCollectedClusters.length) {
+      this.logger.info('Garbage collected %d clusters', garbageCollectedClusters.length)
+    }
+  }.bind)
 }
 
 /**
