@@ -1,6 +1,6 @@
 # Node Kinesis Client Library
 
-[![Build Status](https://travis-ci.org/evansolomon/nodejs-kinesis-client-library.svg)](https://travis-ci.org/evansolomon/nodejs-kinesis-client-library)
+[![Build Status](https://travis-ci.org/evansolomon/nodejs-kinesis-client-library.svg?branch=master)](https://travis-ci.org/evansolomon/nodejs-kinesis-client-library)
 
 Based on the AWS [Kinesis Client Library for Java](https://github.com/awslabs/amazon-kinesis-client), reimplemented in Node.js.
 
