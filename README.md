@@ -51,6 +51,7 @@ Required flags:
 
 Optional flags:
 --start-at [Starting iterator type] ("trim_horizon" or "latest", defaults to "trim_horizon")
+--capacity.[read|write] [Throughput] (DynamoDB throughput for *new* tables, defaults to 10 for each)
 --aws.[option] [Option value]  (e.g. --aws.region us-west-2)
 --http [port]  (Start HTTP server, port default to $PORT)
 ```

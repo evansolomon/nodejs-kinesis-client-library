@@ -60,8 +60,13 @@ ConsumerCluster.prototype.init = function () {
 
     createTable: ['tableExists', function (done, data) {
       if (data.tableExists) return done()
-      _this.logger.info({table: _this.opts.tableName}, 'Creating DynamoDB table')
-      models.Cluster.createTable(_this.opts.tableName, _this.opts.awsConfig, done)
+
+      var tableName = _this.opts.tableName
+      var awsConfig = _this.opts.awsConfig
+      var capacity = _this.opts.capacity || {}
+
+      _this.logger.info({table: tableName}, 'Creating DynamoDB table')
+      models.Cluster.createTable(tableName, awsConfig, capacity, done)
     }]
   }, function (err) {
     if (err) return _this.logAndEmitError(err, 'Error ensuring Dynamo table exists')
