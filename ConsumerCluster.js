@@ -270,8 +270,10 @@ ConsumerCluster.prototype._addConsumer = function (consumer) {
   this.consumerIds.push(consumer.id)
   this.consumers[consumer.id] = consumer
 
-  consumer.once('exit', function () {
-    this.logger.info({shardId: consumer.opts.shardId}, 'Consumer exited')
+  consumer.once('exit', function (code) {
+    var logMethod = code === 0 ? 'info' : 'error'
+    this.logger[logMethod]({shardId: consumer.opts.shardId, exitCode: code}, 'Consumer exited')
+
     this.consumerIds = _.without(this.consumerIds, consumer.id)
     delete this.consumers[consumer.id]
   }.bind(this))
