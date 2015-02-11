@@ -2,19 +2,20 @@
  * @fileoverview Cluster manager.
  */
 
-var path = require('path')
 var EventEmitter = require('events').EventEmitter
-var util = require('util')
 var nodeCluster = require('cluster')
+var path = require('path')
+var util = require('util')
 
-var async = require('async')
 var _ = require('underscore')
+var async = require('async')
 var bunyan = require('bunyan')
 
-var server = require('./lib/server')
-var models = require('./lib/models')
 var aws = require('./lib/aws/factory')
+var config = require('./lib/config')
 var kinesis = require('./lib/aws/kinesis')
+var models = require('./lib/models')
+var server = require('./lib/server')
 
 module.exports = ConsumerCluster
 
@@ -39,6 +40,7 @@ function ConsumerCluster(pathToConsumer, opts) {
 
   this.client = aws.create(opts.awsConfig, false, 'Kinesis')
 
+  this.hasStartedReset = false
   this.externalNetwork = {}
   this.consumers = {}
   this.consumerIds = []
@@ -112,6 +114,9 @@ ConsumerCluster.prototype._bindListeners = function () {
   })
 
   this.on('availableShard', function (shardId, leaseCounter) {
+    // Stops accepting consumers, since the cluster will be reset based one an error
+    if (_this.hasStartedReset) return
+
     _this.spawn(shardId, leaseCounter)
   })
 }
@@ -280,14 +285,48 @@ ConsumerCluster.prototype._addConsumer = function (consumer) {
 }
 
 /**
- * Kill a consumer in the cluser.
+ * Kill a consumer in the cluster.
+ *
+ * @param {Number} consumer identifier
+ * @param  {Function} callback
  */
-ConsumerCluster.prototype._killConsumer = function () {
-  var id = this.consumerIds[0]
+ConsumerCluster.prototype._killConsumer = function (consumerId, callback) {
+  var id = consumerId || this.consumerIds[0]
+
   this.logger.info({id: id}, 'Killing consumer')
-  this.consumers[id].kill()
+  this.consumers[id].send(config.shutdownMessage)
+
+  // Kills consumer in 40 seconds, giving it enough time to consumer's shut down process
+  // to finish
+  setTimeout(function () {
+    if (this.consumers[id]) {
+      this.consumers[id].kill()
+
+      if (callback) return callback()
+    }
+  }.bind(this), 40000).unref()
 }
 
+/**
+ * Kills all consumers and then triggers the event to reset the cluster.
+ *
+ * @param {Error} error generated in some of the cluster processes
+ */
+ConsumerCluster.prototype._killAllConsumers = function (err) {
+  if (this.hasStartedReset) return
+
+  this.logger.info('Killing all consumers')
+
+  this.hasStartedReset = true
+
+  if (!this.consumerIds.length) return this.emit('error', err)
+
+  var _this = this
+
+  return async.each(_this.consumerIds, _this._killConsumer.bind(this), function () {
+    return _this.emit('error', err)
+  });
+}
 
 /**
  * Continuously fetch data about the rest of the network.
@@ -332,7 +371,6 @@ ConsumerCluster.prototype._fetchExternalNetwork = function (callback) {
     callback()
   })
 }
-
 
 /**
  * Continuously publish data about this cluster to the network.
@@ -392,5 +430,6 @@ ConsumerCluster.prototype.logAndEmitError = function (err, desc) {
   this.logger.error(desc)
   this.logger.error(err)
 
-  this.emit('error', err)
+  // Kills all consumers and then resets the cluster
+  this._killAllConsumers(err)
 }

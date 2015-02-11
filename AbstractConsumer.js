@@ -4,13 +4,14 @@
 
 var util = require('util')
 
+var _ = require('underscore')
 var async = require('async')
 var bunyan = require('bunyan')
-var _ = require('underscore')
 
-var models = require('./lib/models')
 var aws = require('./lib/aws/factory')
+var config = require('./lib/config')
 var kinesis = require('./lib/aws/kinesis')
+var models = require('./lib/models')
 
 module.exports = AbstractConsumer
 
@@ -40,6 +41,14 @@ function AbstractConsumer(opts) {
   if (! this.startingIteratorType) {
      this.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
   }
+
+  this.hasStartedExit = false
+
+  process.on('message', function (msg) {
+    if (msg === config.shutdownMessage) {
+      this._exit()
+    }
+  }.bind(this))
 
   this.logger = bunyan.createLogger({
     name: 'KinesisConsumer',
@@ -329,6 +338,11 @@ AbstractConsumer.prototype._updateShardIterator = function (sequenceNumber, call
  */
 AbstractConsumer.prototype._exit = function (err) {
   var _this = this
+
+  if (this.hasStartedExit) return
+
+  this.hasStartedExit = true
+
   if (err) {
     this.logger.error(err)
   }
