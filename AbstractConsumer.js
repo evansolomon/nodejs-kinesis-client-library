@@ -340,7 +340,6 @@ AbstractConsumer.prototype._exit = function (err) {
   var _this = this
 
   if (this.hasStartedExit) return
-
   this.hasStartedExit = true
 
   if (err) {

@@ -40,7 +40,7 @@ function ConsumerCluster(pathToConsumer, opts) {
 
   this.client = aws.create(opts.awsConfig, false, 'Kinesis')
 
-  this.hasStartedReset = false
+  this.isShuttingDownFromError = false
   this.externalNetwork = {}
   this.consumers = {}
   this.consumerIds = []
@@ -109,13 +109,17 @@ ConsumerCluster.prototype._bindListeners = function () {
       _this.fetchAvailableShard()
     } else if (_this._hasTooManyShards()) {
       _this.logger.debug({consumerIds: _this.consumerIds}, 'Have too many shards')
-      _this._killConsumer()
+      _this._killConsumer(function (err) {
+        if (err) {
+          _this.logAndEmitError(err)
+        }
+      })
     }
   })
 
   this.on('availableShard', function (shardId, leaseCounter) {
     // Stops accepting consumers, since the cluster will be reset based one an error
-    if (_this.hasStartedReset) return
+    if (_this.isShuttingDownFromError) return
 
     _this.spawn(shardId, leaseCounter)
   })
@@ -285,47 +289,51 @@ ConsumerCluster.prototype._addConsumer = function (consumer) {
 }
 
 /**
- * Kill a consumer in the cluster.
+ * Kill any consumer in the cluster.
  *
- * @param {Number} consumer identifier
- * @param  {Function} callback
+ * @param {Function}  callback
  */
-ConsumerCluster.prototype._killConsumer = function (consumerId, callback) {
-  var id = consumerId || this.consumerIds[0]
+ConsumerCluster.prototype._killConsumer = function (callback) {
+  var id = this.consumerIds[0]
+  this._killConsumer(id, callback)
+}
 
+/**
+ * Kill a specific consumer in the cluster.
+ *
+ * @param {Number}    id
+ * @param {Function}  callback
+ */
+ConsumerCluster.prototype._killConsumerById = function (id, callback) {
   this.logger.info({id: id}, 'Killing consumer')
+
+  this.consumers[id].once('exit', function (code) {
+    var err = null
+    if (code > 0) {
+      err = new Error('Consumer process exited with code: ' + code)
+    }
+    callback(err)
+  })
+
   this.consumers[id].send(config.shutdownMessage)
 
-  // Kills consumer in 40 seconds, giving it enough time to consumer's shut down process
-  // to finish
+  // Force kill the consumer in 40 seconds, giving enough time for the consumer's shutdown
+  // process to finish
   setTimeout(function () {
     if (this.consumers[id]) {
       this.consumers[id].kill()
-
-      if (callback) return callback()
     }
   }.bind(this), 40000).unref()
 }
 
 /**
- * Kills all consumers and then triggers the event to reset the cluster.
+ * Kill all consumers and then triggers the event to reset the cluster.
  *
- * @param {Error} error generated in some of the cluster processes
+ * @param {Function}  callback
  */
-ConsumerCluster.prototype._killAllConsumers = function (err) {
-  if (this.hasStartedReset) return
-
+ConsumerCluster.prototype._killAllConsumers = function (callback) {
   this.logger.info('Killing all consumers')
-
-  this.hasStartedReset = true
-
-  if (!this.consumerIds.length) return this.emit('error', err)
-
-  var _this = this
-
-  return async.each(_this.consumerIds, _this._killConsumer.bind(this), function () {
-    return _this.emit('error', err)
-  });
+  async.each(this.consumerIds, this._killConsumerById.bind(this), callback)
 }
 
 /**
@@ -430,6 +438,17 @@ ConsumerCluster.prototype.logAndEmitError = function (err, desc) {
   this.logger.error(desc)
   this.logger.error(err)
 
-  // Kills all consumers and then resets the cluster
-  this._killAllConsumers(err)
+  // Only start the shutdown process once
+  if (this.isShuttingDownFromError) return
+  this.isShuttingDownFromError = true
+
+  // Kill all consumers and then emit an error so that the cluster can be re-spawned
+  this._killAllConsumers(function (killErr) {
+    if (killErr) {
+      this.logger.error(killErr)
+    }
+
+    // Emit the original error that started the shutdown process
+    this.emit('error', err)
+  }.bind(this))
 }
