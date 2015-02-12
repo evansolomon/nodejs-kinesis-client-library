@@ -1,6 +1,6 @@
 {
   "name": "kinesis-client-library",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Process Kinesis streams and automatically scale up or down as shards split or merge.",
   "main": "index.js",
   "scripts": {
