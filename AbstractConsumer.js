@@ -225,7 +225,7 @@ AbstractConsumer.prototype._getRecords = function (callback) {
 
     // We have processed all the data from a closed stream
     if (data.NextShardIterator == null && data.Records.length === 0) {
-      return _this.markFinished()
+      return _this._markFinished()
     }
 
     var lastSequenceNumber = _.pluck(data.Records, 'SequenceNumber').pop()
