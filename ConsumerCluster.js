@@ -295,7 +295,7 @@ ConsumerCluster.prototype._addConsumer = function (consumer) {
  */
 ConsumerCluster.prototype._killConsumer = function (callback) {
   var id = this.consumerIds[0]
-  this._killConsumer(id, callback)
+  this._killConsumerById(id, callback)
 }
 
 /**
