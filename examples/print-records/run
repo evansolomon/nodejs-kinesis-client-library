@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# Usage: ./run your-stream-name your-aws-region
+# Example: ./run click-stream us-east-1
+
+cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+STREAM_NAME="${1}"
+REGION="${2}"
+
+if [ '' == "${REGION}" ]; then
+  REGION='us-east-1'
+fi
+
+../../bin/launch \
+  --consumer child.js \
+  --table PrintRecordsExample \
+  --stream "${STREAM_NAME}" \
+  --aws.region "${REGION}" \
+  --local-dynamo
