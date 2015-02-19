@@ -307,12 +307,20 @@ ConsumerCluster.prototype._killConsumer = function (callback) {
 ConsumerCluster.prototype._killConsumerById = function (id, callback) {
   this.logger.info({id: id}, 'Killing consumer')
 
+  var callbackWasCalled = false
+  var wrappedCallback = function () {
+    if (! callbackWasCalled) {
+      callback.apply(null, arguments)
+    }
+    callbackWasCalled = true
+  }
+
   this.consumers[id].once('exit', function (code) {
     var err = null
     if (code > 0) {
       err = new Error('Consumer process exited with code: ' + code)
     }
-    callback(err)
+    wrappedCallback(err)
   })
 
   this.consumers[id].send(config.shutdownMessage)
@@ -323,6 +331,7 @@ ConsumerCluster.prototype._killConsumerById = function (id, callback) {
     if (this.consumers[id]) {
       this.consumers[id].kill()
     }
+    wrappedCallback(new Error('Consumer did not exit in time'))
   }.bind(this), 40000).unref()
 }
 
