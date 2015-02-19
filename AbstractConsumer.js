@@ -37,6 +37,10 @@ function AbstractConsumer(opts) {
   this.awsConfig = opts.awsConfig
   this.localDynamo = opts.localDynamo
 
+  if (! this.opts.shardId) {
+    return this._exit(new Error('Cannot spawn a consumer without a shard ID'))
+  }
+
   this.startingIteratorType = AbstractConsumer.ShardIteratorTypes[opts.startingIteratorType]
   if (! this.startingIteratorType) {
      this.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
