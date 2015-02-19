@@ -37,7 +37,7 @@ function AbstractConsumer(opts) {
   this.awsConfig = opts.awsConfig
   this.localDynamo = opts.localDynamo
 
-  if (! this.opts.shardId) {
+  if (! opts.shardId) {
     return this._exit(new Error('Cannot spawn a consumer without a shard ID'))
   }
 
