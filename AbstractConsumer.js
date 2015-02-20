@@ -85,6 +85,7 @@ AbstractConsumer.prototype.init = function () {
   this._setupLease()
 
   async.series([
+    _this.initialize.bind(_this),
     _this._reserveLease.bind(_this),
     function (done) {
       _this.lease.getCheckpoint(function (err, checkpoint) {
@@ -94,9 +95,7 @@ AbstractConsumer.prototype.init = function () {
         _this.maxSequenceNumber = checkpoint
         _this._updateShardIterator(checkpoint, done)
       })
-    },
-
-    _this.initialize.bind(_this)
+    }
   ], function (err) {
     if (err) {
       return _this._exit(err)
