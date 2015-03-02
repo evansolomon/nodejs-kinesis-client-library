@@ -1,6 +1,4 @@
-var path = require('path')
-
-module.exports = {
+var config = {
   shutdownMessage: 'shutdown',
   localDynamoDBEndpoint: {
     protocol: 'http',
@@ -8,3 +6,5 @@ module.exports = {
     port: 6789
   }
 }
+
+export = config

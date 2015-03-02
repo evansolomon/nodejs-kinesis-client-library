@@ -2,9 +2,14 @@
   "name": "kinesis-client-library",
   "version": "0.2.3",
   "description": "Process Kinesis streams and automatically scale up or down as shards split or merge.",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
-    "test": "jshint *.js lib"
+    "test": "npm run build",
+    "clean": "rm -rf build",
+    "build": "npm run clean && npm run typescript-definitions && npm run typescript",
+    "typescript-definitions": "tsd reinstall && tsd rebundle",
+    "typescript": "tsc src/*.ts src/**/*.ts build/.typings/tsd.d.ts --module commonjs --outDir build --declaration",
+    "prepublish": "npm run build"
   },
   "author": "Evan Solomon",
   "license": "MIT",
@@ -34,6 +39,8 @@
     "vogels": "^0.12.0"
   },
   "devDependencies": {
-    "jshint": "^2.5.10"
+    "jshint": "^2.5.10",
+    "tsd": "^0.6.0-beta.5",
+    "typescript": "^1.4.1"
   }
 }

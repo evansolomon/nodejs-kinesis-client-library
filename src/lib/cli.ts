@@ -1,19 +1,35 @@
-/**
- * @fileoverview Create a cluster from the command line.
- */
+import os = require('os')
+import path = require('path')
+import child_process = require('child_process')
 
-var os = require('os')
-var path = require('path')
-var child_process = require('child_process')
-var async = require('async')
-var minimist = require('minimist')
-var mkdirp = require('mkdirp')
-var logger = require('bunyan').createLogger({name: 'KinesisClusterCLI'})
+import AWS = require('aws-sdk')
+import async = require('async')
+import minimist = require('minimist')
+import mkdirp = require('mkdirp')
+import bunyan = require('bunyan')
 
-var ConsumerCluster = require('../ConsumerCluster')
-var config = require('./config')
+import ConsumerCluster = require('../ConsumerCluster')
+import config = require('./config')
 
-var args = minimist(process.argv.slice(2))
+var logger = bunyan.createLogger({name: 'KinesisClusterCLI'})
+
+interface KinesisCliArgs extends minimist.ParsedArgs {
+  help: Boolean
+  consumer: string
+  table: string
+  stream: string
+  'start-at'?: string
+  capacity?: {
+    read?: number
+    write?: number
+  }
+  aws?: AWS.ClientConfig
+  http?: (Boolean|number)
+  'local-dynamo'?: Boolean
+  'local-dynamo-directory'?: string
+}
+
+var args = <KinesisCliArgs> minimist(process.argv.slice(2))
 
 if (args.help) {
   console.log('Usage:\n')
@@ -78,9 +94,9 @@ async.auto({
     var proc = child_process.spawn(nodeExecutable, [
       './node_modules/local-dynamo/bin/launch_local_dynamo.js',
       '--database_dir', databaseDir,
-      '--port', config.localDynamoDBEndpoint.port
+      '--port', config.localDynamoDBEndpoint.port.toString()
     ], {
-      cwd: path.resolve(__dirname, '..')
+      cwd: path.resolve(__dirname, '../..')
     })
 
     proc.stdout.pipe(process.stdout)
@@ -107,8 +123,7 @@ async.auto({
     logger.info('Launching cluster')
     var cluster
     try {
-      cluster = new ConsumerCluster(consumer, opts)
-      cluster.init()
+      cluster = new ConsumerCluster.ConsumerCluster(consumer, opts)
     } catch (e) {
       logger.error('Error launching cluster')
       logger.error(e)

@@ -11,7 +11,7 @@ var bunyan = require('bunyan')
 var logger = bunyan.createLogger({name: 'KinesisClusterLauncher'})
 var args = process.argv.slice(2)
 
-var cliPath = path.resolve(__dirname, '../lib/cli')
+var cliPath = path.resolve(__dirname, '../build/lib/cli')
 
 fork()
 

@@ -1,16 +1,6 @@
-/**
- * @fileoverview Manage HTTP server.
- */
+import http = require('http')
 
-var http = require('http')
-
-/**
- * Create an HTTP server.
- *
- * @param  {(number|string)}  port
- * @param  {Function}         callback  Function to respond to HTTP requests.
- */
-module.exports.create = function (port, callback) {
+export var create = function (port: number|string, callback: () => Stringable) {
   var server = http.createServer(function (req, res) {
     try {
       var response = callback()
@@ -23,4 +13,8 @@ module.exports.create = function (port, callback) {
   })
 
   server.listen(port)
+}
+
+export interface Stringable {
+  toString: () => string;
 }

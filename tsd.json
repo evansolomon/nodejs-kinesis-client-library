@@ -1,0 +1,33 @@
+{
+  "version": "v4",
+  "repo": "evansolomon/DefinitelyTyped",
+  "ref": "master",
+  "path": "build/.typings",
+  "bundle": "build/.typings/tsd.d.ts",
+  "installed": {
+    "aws-sdk/aws-sdk.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "async/async.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "underscore/underscore.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "node/node.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "bunyan/bunyan.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "minimist/minimist.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "mkdirp/mkdirp.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    },
+    "vogels/vogels.d.ts": {
+      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+    }
+  }
+}

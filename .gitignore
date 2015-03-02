@@ -1,3 +1,4 @@
 node_modules
 .scratch
 npm-debug.log
+build
