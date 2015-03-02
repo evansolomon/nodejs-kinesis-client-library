@@ -227,7 +227,7 @@ AbstractConsumer.prototype._getRecords = function (callback) {
     }
 
     // We have processed all the data from a closed stream
-    if (data.NextShardIterator == null && data.Records.length === 0) {
+    if (data.NextShardIterator == null && (! data.Records || 0 === data.Records.length)) {
       return _this._markFinished()
     }
 
