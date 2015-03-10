@@ -9,9 +9,9 @@ var helpers = require('./helpers')
 
 describe('Kinesis Client Library', function () {
   var kinesis = new AWS.Kinesis({
-    region: 'us-east-1',
-    accessKeyId: 'accessKeyId',
-    secretAccessKey: 'secretAccessKey'
+    region: helpers.kinesalite.region,
+    accessKeyId: helpers.kinesalite.accessKeyId,
+    secretAccessKey: helpers.kinesalite.secretAccessKey
   })
 
   kinesis.setEndpoint('http://localhost:' + helpers.kinesalite.port)

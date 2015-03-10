@@ -7,6 +7,8 @@ var async = require('async')
 var launchString = 'Listening'
 
 exports.region = 'us-east-1'
+exports.accessKeyId = 'accessKeyId'
+exports.secretAccessKey = 'secretAccessKey'
 exports.name = 'test-stream'
 exports.port = '5678'
 exports.shardCount = 3
@@ -32,8 +34,8 @@ exports.start = function (callback) {
 exports.createStream = function (callback) {
   var kinesis = new AWS.Kinesis({
     region: exports.region,
-    accessKeyId: 'accessKeyId',
-    secretAccessKey: 'secretAccessKey'
+    accessKeyId: exports.accessKeyId,
+    secretAccessKey: exports.secretAccessKey
   })
   kinesis.setEndpoint('http://localhost:' + exports.port)
   kinesis.createStream({
