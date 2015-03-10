@@ -14,6 +14,8 @@ exports.launch = function (name) {
     '--local-kinesis',
     '--local-kinesis-port', kinesalite.port,
     '--local-kinesis-no-start',
-    '--aws.region', 'us-east-1'
+    '--aws.region', 'us-east-1',
+    '--aws.accessKeyId', 'accessKeyId',
+    '--aws.secretAccessKey', 'secretAccessKey'
   ])
 }

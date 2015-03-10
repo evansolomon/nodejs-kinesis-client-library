@@ -30,7 +30,11 @@ exports.start = function (callback) {
 }
 
 exports.createStream = function (callback) {
-  var kinesis = new AWS.Kinesis({region: exports.region})
+  var kinesis = new AWS.Kinesis({
+    region: exports.region,
+    accessKeyId: 'accessKeyId',
+    secretAccessKey: 'secretAccessKey'
+  })
   kinesis.setEndpoint('http://localhost:' + exports.port)
   kinesis.createStream({
     StreamName: exports.name,
