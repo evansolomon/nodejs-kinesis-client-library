@@ -129,7 +129,7 @@ async.auto({
   },
   localKinesis: function (done) {
     if (! opts.localKinesis) return done()
-    if (opts['local-kinesis-no-start']) return done()
+    if (args['local-kinesis-no-start']) return done()
 
     var port = args['local-kinesis-port'] || config.localKinesisEndpoint.port
 
