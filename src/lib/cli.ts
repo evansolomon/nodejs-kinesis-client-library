@@ -27,6 +27,9 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
   http?: (Boolean|number)
   'local-dynamo'?: Boolean
   'local-dynamo-directory'?: string
+  'local-kinesis'?: Boolean
+  'local-kinesis-port'?: number
+  'local-kinesis-no-start'?: Boolean
 }
 
 var args = <KinesisCliArgs> minimist(process.argv.slice(2))
@@ -49,6 +52,9 @@ if (args.help) {
   console.log('--http [port]  (Start HTTP server, port defaults to $PORT)')
   console.log('--local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)')
   console.log('--local-dynamo-directory (Directory to store local DB, defaults to temp directory)')
+  console.log('--local-kinesis (Use a local implementation of Kinesis, defaults to false)')
+  console.log('--local-dynamo-directory (Port to access local Kinesis on, defaults to 4567)')
+  console.log('--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)')
   process.exit()
 }
 
@@ -59,7 +65,9 @@ var opts = {
   awsConfig: args.aws,
   startingIteratorType: args['start-at'],
   capacity: args.capacity,
-  localDynamo: !! args['local-dynamo']
+  localDynamo: !! args['local-dynamo'],
+  localKinesis: !! args['local-kinesis'],
+  localKinesisPort: args['local-kinesis-port']
 }
 
 logger.info('Consumer app path:', consumer)
@@ -119,7 +127,38 @@ async.auto({
       setTimeout(done, 500)
     })
   },
-  cluster: ['localDynamo', function (done) {
+  localKinesis: function (done) {
+    if (! opts.localKinesis) return done()
+    if (opts['local-kinesis-no-start']) return done()
+
+    var port = args['local-kinesis-port'] || config.localKinesisEndpoint.port
+
+    var proc = child_process.spawn('./node_modules/.bin/kinesalite', [
+      '--port', port.toString()
+    ], {
+      cwd: path.resolve(__dirname, '../..')
+    })
+
+    proc.on('error', function (err) {
+      logger.error(err, 'Error in local Kinesis')
+      process.exit(1)
+    })
+
+    var output = ''
+    proc.stdout.on('data', function (chunk) {
+      output += chunk
+      if (output.indexOf('Listening') === -1) return
+
+      done()
+      done = function () {}
+      clearTimeout(timer)
+    })
+
+    var timer = setTimeout(function () {
+      done(new Error('Local Kinesis took too long to start'))
+    }, 5000)
+  },
+  cluster: ['localDynamo', 'localKinesis', function (done) {
     logger.info('Launching cluster')
     var cluster
     try {

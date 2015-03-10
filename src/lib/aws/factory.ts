@@ -13,10 +13,15 @@ function localizeService(service: AWS.Service, configName: string) {
   service.setEndpoint(endpoint)
 }
 
-export var kinesis = function (awsConfig:AWS.ClientConfig, local:Boolean) : AWS.Kinesis {
+export var kinesis = function (awsConfig:AWS.ClientConfig, local:Boolean, port?:number) : AWS.Kinesis {
   var instance =  new AWS.Kinesis(awsConfig || {})
   if (local) {
     localizeService(instance, 'localKinesisEndpoint')
+  }
+
+  // Allow port to be customized so that we can share an existing stream with other processes
+  if (port) {
+    instance.endpoint.port = port
   }
 
   return instance

@@ -20,6 +20,8 @@ interface AbstractConsumerOpts {
   awsConfig: AWS.ClientConfig
   startingIteratorType?: string
   localDynamo: Boolean
+  localKinesis: Boolean
+  localKinesisPort?: number
 }
 
 export interface ProcessRecordsCallback {
@@ -74,7 +76,7 @@ export class AbstractConsumer {
       this.opts.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
     }
 
-    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, false)
+    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.localKinesis, this.opts.localKinesisPort)
 
     process.on('message', function (msg) {
       if (msg === config.shutdownMessage) {

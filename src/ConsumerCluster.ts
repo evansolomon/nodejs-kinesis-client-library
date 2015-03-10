@@ -13,6 +13,7 @@ import config = require('./lib/config')
 import kinesis = require('./lib/aws/kinesis')
 import lease = require('./lib/models/Lease')
 import cluster = require('./lib/models/Cluster')
+import stream = require('./lib/models/Stream')
 import server = require('./lib/server')
 
 
@@ -25,6 +26,8 @@ export interface ConsumerClusterOpts {
   tableName: string
   awsConfig: AWS.ClientConfig
   localDynamo: Boolean
+  localKinesis: Boolean
+  localKinesisPort?: number
   capacity: cluster.Capacity
   startingIteratorType?: string
 }
@@ -54,7 +57,7 @@ export class ConsumerCluster extends events.EventEmitter {
     })
 
     this.cluster = new cluster.Model(this.opts.tableName, this.opts.awsConfig, this.opts.localDynamo)
-    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, false)
+    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.localKinesis, this.opts.localKinesisPort)
     this._init()
   }
 
@@ -79,7 +82,22 @@ export class ConsumerCluster extends events.EventEmitter {
 
         _this.logger.info({table: tableName}, 'Creating DynamoDB table')
         cluster.Model.createTable(tableName, awsConfig, capacity, localDynamo, done)
-      }]
+      }],
+
+      createStream: function (done) {
+        var streamName = _this.opts.streamName
+        var streamModel = new stream.Stream(streamName, _this.kinesis)
+
+        streamModel.exists(function (err, exists) {
+          if (err) return done(err)
+          if (exists) return done()
+
+          _this.kinesis.createStream({StreamName: streamName, ShardCount: 1}, function (err) {
+            if (err) return done(err)
+            streamModel.onActive(done)
+          })
+        })
+      }
     }, function (err) {
       if (err) return _this._logAndEmitError(err, 'Error ensuring Dynamo table exists')
 
@@ -250,7 +268,9 @@ export class ConsumerCluster extends events.EventEmitter {
       startingIteratorType: (this.opts.startingIteratorType || '').toUpperCase(),
       shardId: shardId,
       leaseCounter: leaseCounter,
-      localDynamo: this.opts.localDynamo
+      localDynamo: this.opts.localDynamo,
+      localKinesis: this.opts.localKinesis,
+      localKinesisPort: this.opts.localKinesisPort
     }
 
     var env = {

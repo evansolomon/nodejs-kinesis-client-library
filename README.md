@@ -56,6 +56,9 @@ Optional flags:
 --http [port]  (Start HTTP server, port default to $PORT)
 --local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)
 --local-dynamo-directory (Directory to store local DB, defaults to temp directory)
+--local-kinesis (Use a local implementation of Kinesis, defaults to false)
+--local-dynamo-directory (Port to access local Kinesis on, defaults to 4567)
+--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)
 ```
 
 Notes:
