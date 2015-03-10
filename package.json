@@ -4,7 +4,7 @@
   "description": "Process Kinesis streams and automatically scale up or down as shards split or merge.",
   "main": "build/index.js",
   "scripts": {
-    "test": "npm run build",
+    "test": "mocha",
     "clean": "rm -rf build",
     "build": "npm run clean && npm run typescript-definitions && npm run typescript",
     "typescript-definitions": "tsd reinstall && tsd rebundle",
@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "jshint": "^2.5.10",
+    "mocha": "^2.2.1",
     "tsd": "^0.6.0-beta.5",
     "typescript": "^1.4.1"
   }
