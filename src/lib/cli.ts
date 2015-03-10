@@ -53,7 +53,7 @@ if (args.help) {
   console.log('--local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)')
   console.log('--local-dynamo-directory (Directory to store local DB, defaults to temp directory)')
   console.log('--local-kinesis (Use a local implementation of Kinesis, defaults to false)')
-  console.log('--local-dynamo-directory (Port to access local Kinesis on, defaults to 4567)')
+  console.log('--local-kinesis-port (Port to access local Kinesis on, defaults to 4567)')
   console.log('--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)')
   process.exit()
 }
