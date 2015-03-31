@@ -30,6 +30,7 @@ export interface ConsumerClusterOpts {
   localKinesisPort?: number
   capacity: cluster.Capacity
   startingIteratorType?: string
+  logLevel?: string
 }
 
 
@@ -49,7 +50,10 @@ export class ConsumerCluster extends events.EventEmitter {
     super()
     this.opts = opts
 
-    this.logger = bunyan.createLogger({name: 'KinesisCluster'})
+    this.logger = bunyan.createLogger({
+      name: 'KinesisCluster',
+      level: opts.logLevel
+    })
 
     nodeCluster.setupMaster({
       exec: pathToConsumer,

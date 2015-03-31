@@ -22,6 +22,7 @@ interface AbstractConsumerOpts {
   localDynamo: Boolean
   localKinesis: Boolean
   localKinesisPort?: number
+  logLevel?: string
 }
 
 export interface ProcessRecordsCallback {
@@ -86,6 +87,7 @@ export class AbstractConsumer {
 
     this.logger = bunyan.createLogger({
       name: 'KinesisConsumer',
+      level: opts.logLevel,
       streamName: opts.streamName,
       shardId: opts.shardId
     })

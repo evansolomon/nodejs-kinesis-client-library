@@ -30,6 +30,7 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
   'local-kinesis'?: Boolean
   'local-kinesis-port'?: number
   'local-kinesis-no-start'?: Boolean
+  'log-level': string
 }
 
 var args = <KinesisCliArgs> minimist(process.argv.slice(2))
@@ -50,6 +51,7 @@ if (args.help) {
   console.log('--capacity.[read|write] [Throughput] (DynamoDB throughput for *new* tables, defaults to 10 for each)')
   console.log('--aws.[option] [Option value]  (e.g. --aws.region us-west-2)')
   console.log('--http [port]  (Start HTTP server, port defaults to $PORT)')
+  console.log('--log-level [level] (Logging verbosity, uses Bunyan log levels)')
   console.log('--local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)')
   console.log('--local-dynamo-directory (Directory to store local DB, defaults to temp directory)')
   console.log('--local-kinesis (Use a local implementation of Kinesis, defaults to false)')
@@ -67,7 +69,8 @@ var opts = {
   capacity: args.capacity,
   localDynamo: !! args['local-dynamo'],
   localKinesis: !! args['local-kinesis'],
-  localKinesisPort: args['local-kinesis-port']
+  localKinesisPort: args['local-kinesis-port'],
+  logLevel: args['log-level']
 }
 
 logger.info('Consumer app path:', consumer)
