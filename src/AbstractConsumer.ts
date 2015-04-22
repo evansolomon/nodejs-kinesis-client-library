@@ -229,6 +229,7 @@ export class AbstractConsumer {
 
       // We have processed all the data from a closed stream
       if (data.NextShardIterator == null && (! data.Records || data.Records.length === 0)) {
+        _this.log({data: data}, 'Marking shard as finished')
         return _this._markFinished()
       }
 
