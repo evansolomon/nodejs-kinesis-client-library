@@ -31,6 +31,7 @@ export interface ConsumerClusterOpts {
   capacity: cluster.Capacity
   startingIteratorType?: string
   logLevel?: string
+  numRecords?: number
 }
 
 
@@ -274,7 +275,8 @@ export class ConsumerCluster extends events.EventEmitter {
       leaseCounter: leaseCounter,
       localDynamo: this.opts.localDynamo,
       localKinesis: this.opts.localKinesis,
-      localKinesisPort: this.opts.localKinesisPort
+      localKinesisPort: this.opts.localKinesisPort,
+      numRecords: this.opts.numRecords
     }
 
     var env = {

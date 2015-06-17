@@ -31,6 +31,7 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
   'local-kinesis-port'?: number
   'local-kinesis-no-start'?: Boolean
   'log-level': string
+  'num-records'?: number
 }
 
 var args = <KinesisCliArgs> minimist(process.argv.slice(2))
@@ -57,6 +58,7 @@ if (args.help) {
   console.log('--local-kinesis (Use a local implementation of Kinesis, defaults to false)')
   console.log('--local-kinesis-port (Port to access local Kinesis on, defaults to 4567)')
   console.log('--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)')
+  console.log('--num-records (number of records to grab from kinesis, defaults to no limit)')
   process.exit()
 }
 
@@ -70,7 +72,8 @@ var opts = {
   localDynamo: !! args['local-dynamo'],
   localKinesis: !! args['local-kinesis'],
   localKinesisPort: args['local-kinesis-port'],
-  logLevel: args['log-level']
+  logLevel: args['log-level'],
+  numRecords: args['num-records']
 }
 
 logger.info('Consumer app path:', consumer)
