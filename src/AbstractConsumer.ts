@@ -204,7 +204,7 @@ export class AbstractConsumer {
     
     var getRecordsParams = {ShardIterator: this.nextShardIterator}
     if (this.opts.numRecords && this.opts.numRecords > 0) {
-      getRecordsParams.Limit = this.opts.numRecords
+      getRecordsParams = {ShardIterator: this.nextShardIterator, Limit: this.opts.numRecords}
     }
       
     this.kinesis.getRecords(getRecordsParams, function (err, data) {

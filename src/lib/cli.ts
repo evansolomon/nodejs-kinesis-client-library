@@ -73,7 +73,7 @@ var opts = {
   localKinesis: !! args['local-kinesis'],
   localKinesisPort: args['local-kinesis-port'],
   logLevel: args['log-level'],
-  numRecords: arg['num-records']
+  numRecords: args['num-records']
 }
 
 logger.info('Consumer app path:', consumer)
