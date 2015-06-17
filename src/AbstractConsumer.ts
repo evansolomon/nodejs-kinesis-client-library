@@ -201,12 +201,12 @@ export class AbstractConsumer {
   // Get records from the stream and wait for them to be processed.
   private _getRecords (callback) {
     var _this = this
-    
+
     var getRecordsParams = {ShardIterator: this.nextShardIterator}
     if (this.opts.numRecords && this.opts.numRecords > 0) {
       getRecordsParams = {ShardIterator: this.nextShardIterator, Limit: this.opts.numRecords}
     }
-      
+
     this.kinesis.getRecords(getRecordsParams, function (err, data) {
       // Handle known errors
       if (err && err.code === 'ExpiredIteratorException') {
