@@ -58,7 +58,7 @@ if (args.help) {
   console.log('--local-kinesis (Use a local implementation of Kinesis, defaults to false)')
   console.log('--local-kinesis-port (Port to access local Kinesis on, defaults to 4567)')
   console.log('--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)')
-  console.log('--num-records (number of records to grab from kinesis, defaults to no limit)')
+  console.log('--num-records (Maximum number of records to get in each Kinesis query, defaults to the Kinesis maximum of 10000)')
   process.exit()
 }
 
