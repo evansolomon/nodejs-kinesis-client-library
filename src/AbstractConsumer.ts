@@ -23,6 +23,7 @@ interface AbstractConsumerOpts {
   localKinesis: Boolean
   localKinesisPort?: number
   logLevel?: string
+  numRecords?: number
 }
 
 export interface ProcessRecordsCallback {
@@ -200,8 +201,13 @@ export class AbstractConsumer {
   // Get records from the stream and wait for them to be processed.
   private _getRecords (callback) {
     var _this = this
-
-    this.kinesis.getRecords({ShardIterator: this.nextShardIterator}, function (err, data) {
+    
+    var getRecordsParams = {ShardIterator: this.nextShardIterator}
+    if (this.opts.numRecords && this.opts.numRecords > 0) {
+      getRecordsParams = {ShardIterator: this.nextShardIterator, Limit: this.opts.numRecords}
+    }
+      
+    this.kinesis.getRecords(getRecordsParams, function (err, data) {
       // Handle known errors
       if (err && err.code === 'ExpiredIteratorException') {
         _this.log('Shard iterator expired, updating before next getRecords call')
