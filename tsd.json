@@ -6,28 +6,28 @@
   "bundle": "build/.typings/tsd.d.ts",
   "installed": {
     "aws-sdk/aws-sdk.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "async/async.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "underscore/underscore.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "node/node.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "bunyan/bunyan.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "minimist/minimist.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "mkdirp/mkdirp.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "vogels/vogels.d.ts": {
-      "commit": "50ec9ed6e4ac8a6b78dbb3bb15deaf2f9ea7e098"
+      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     }
   }
 }

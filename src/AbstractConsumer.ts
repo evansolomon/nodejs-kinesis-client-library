@@ -31,6 +31,7 @@ export interface ProcessRecordsCallback {
 }
 
 export interface ConsumerExtension {
+  processResponse: (request: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback) => void
   processRecords: (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) => void
   initialize?: (callback: (err?: any) => void) => void
   shutdown?: (callback: (err?: any) => void) => void
@@ -60,9 +61,14 @@ export class AbstractConsumer {
     callback()
   }
 
-  // Process a batch of records. This method must be implemented by the child.
+  // Process a batch of records. This method, or processResponse, must be implemented by the child.
   public processRecords (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) {
     throw new Error('processRecords must be defined by the consumer class')
+  }
+
+  // Process raw kinesis response.  Override it to get access to the MillisBehindLatest field.
+  public processResponse (response: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback) {
+    this.processRecords(response.Records, callback)
   }
 
   // Called before a consumer exits. This method may be implemented by the child.
@@ -242,14 +248,14 @@ export class AbstractConsumer {
       var lastSequenceNumber = _.pluck(data.Records, 'SequenceNumber').pop()
       _this.maxSequenceNumber = lastSequenceNumber || _this.maxSequenceNumber
 
-      _this._processRecords(data.Records, callback)
+      _this._processResponse(data, callback)
     })
   }
 
-  // Wrap the child's processRecords method to handle checkpointing.
-  private _processRecords (records, callback) {
+  // Wrap the child's processResponse method to handle checkpointing.
+  private _processResponse (data, callback) {
     var _this = this
-    this.processRecords(records, function (err, checkpointSequenceNumber) {
+    this.processResponse(data, function (err, checkpointSequenceNumber) {
       if (err) return callback(err)
 
       // Don't checkpoint
