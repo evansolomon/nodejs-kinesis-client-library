@@ -93,7 +93,7 @@ kcl.AbstractConsumer.extend({
   // create places to hold some data about the consumer
   initialize: function (done) {
     this.cachedRecords = []
-    this.cachedRecordSize = 0
+    this.cachedRecordsSize = 0
     // This MUST be called or processing will never start
     // That is really really really bad
     done()
@@ -104,11 +104,11 @@ kcl.AbstractConsumer.extend({
     records.forEach(function (record) {
       this.cachedRecords.push(record.Data)
       this.cachedRecords.push(newlineBuffer)
-      this.cachedRecordSize += (record.Data.length + newlineBuffer.length)
+      this.cachedRecordsSize += (record.Data.length + newlineBuffer.length)
     }.bind(this))
 
     // not very good for performance
-    var shouldCheckpoint = this.cachedRecordSize > 50000000
+    var shouldCheckpoint = this.cachedRecordsSize > 50000000
 
     // Get more records, but not save a checkpoint
     if (! shouldCheckpoint) return done()
