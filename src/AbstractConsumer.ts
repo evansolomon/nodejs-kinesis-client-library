@@ -31,8 +31,8 @@ export interface ProcessRecordsCallback {
 }
 
 export interface ConsumerExtension {
-  processResponse: (request: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback) => void
-  processRecords: (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) => void
+  processResponse?: (request: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback) => void
+  processRecords?: (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) => void
   initialize?: (callback: (err?: any) => void) => void
   shutdown?: (callback: (err?: any) => void) => void
 }
