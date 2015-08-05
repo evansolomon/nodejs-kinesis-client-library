@@ -74,9 +74,12 @@ Notes:
 
 Consumers are implemented in JavaScript by calling `AbstractConsumer.extend()` with an object that implements some/all of these methods:
 
-* `processRecords` (required): Accepts an array of [Record](http://docs.aws.amazon.com/kinesis/latest/APIReference/API_Record.html) objects (`Record.Data` will be a `Buffer` object) and a callback. Pass `true` as the second argument to the callback when you want to save a checkpoint — i.e. when you have processed a chunk of data.
-* `initialize` (optional): Called when a consumer is spawned, before any records are processed. Accepts a callback that must be called to start record processing.
-* `shutdown` (optional): Called when a consumer is about to exit. Accepts a callback that must be called to complete shutdown; if the callback is not called without 30 seconds the process exits anyway.
+* `processRecords`: Accepts an array of [Record](http://docs.aws.amazon.com/kinesis/latest/APIReference/API_Record.html) objects (`Record.Data` will be a `Buffer` object) and a callback. Pass `true` as the second argument to the callback when you want to save a checkpoint — i.e. when you have processed a chunk of data.
+* `processResponse`: Accepts a full response from Kinesis' [GetRecords API](http://docs.aws.amazon.com/kinesis/latest/APIReference/API_GetRecords.html) and a callback. Pass `true` as the second argument to the callback when you want to save a checkpoint — i.e. when you have processed a chunk of data.
+* `initialize`: Called when a consumer is spawned, before any records are processed. Accepts a callback that must be called to start record processing.
+* `shutdown`: Called when a consumer is about to exit. Accepts a callback that must be called to complete shutdown; if the callback is not called without 30 seconds the process exits anyway.
+
+A consumer MUST implement either `processRecords` or `processResponse`.
 
 #### Example consumer implementation
 
