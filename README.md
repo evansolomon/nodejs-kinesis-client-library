@@ -55,12 +55,14 @@ Optional flags:
 --aws.[option] [Option value]  (e.g. --aws.region us-west-2)
 --http [port]  (Start HTTP server, port defaults to $PORT)
 --log-level [level] (Logging verbosity, uses Bunyan log levels)
+--dynamo-endpoint (Use a cusotm endpoint for the DynamoDB service)
 --local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)
 --local-dynamo-directory (Directory to store local DB, defaults to temp directory)
+--kinesis-endpoint (Use a custom endpoint for the Kinesis service)
 --local-kinesis (Use a local implementation of Kinesis, defaults to false)
 --local-kinesis-port (Port to access local Kinesis on, defaults to 4567)
 --local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)
---num-records (number of records to grab from kinesis, defaults to no limit)
+--num-records (Maximum number of records to get in each Kinesis query, defaults to the Kinesis maximum of 10000)
 ```
 
 Notes:
