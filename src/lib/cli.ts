@@ -11,8 +11,6 @@ import bunyan = require('bunyan')
 import ConsumerCluster = require('../ConsumerCluster')
 import config = require('./config')
 
-var logger = bunyan.createLogger({name: 'KinesisClusterCLI'})
-
 interface KinesisCliArgs extends minimist.ParsedArgs {
   help: Boolean
   consumer: string
@@ -37,6 +35,10 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
 }
 
 var args = <KinesisCliArgs> minimist(process.argv.slice(2))
+var logger = bunyan.createLogger({
+  name: 'KinesisClusterCLI',
+  level: args['log-level']
+})
 
 if (args.help) {
   console.log('Usage:\n')

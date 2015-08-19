@@ -323,7 +323,8 @@ export class ConsumerCluster extends events.EventEmitter {
       leaseCounter: leaseCounter,
       dynamoEndpoint: this.endpoints.dynamo,
       kinesisEndpoint: this.endpoints.kinesis,
-      numRecords: this.opts.numRecords
+      numRecords: this.opts.numRecords,
+      logLevel: this.opts.logLevel
     }
 
     var env = {
