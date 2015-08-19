@@ -19,9 +19,8 @@ interface AbstractConsumerOpts {
   tableName: string
   awsConfig: AWS.ClientConfig
   startingIteratorType?: string
-  localDynamo: Boolean
-  localKinesis: Boolean
-  localKinesisPort?: number
+  dynamoEndpoint?: string
+  kinesisEndpoint?: string
   logLevel?: string
   numRecords?: number
 }
@@ -84,7 +83,7 @@ export class AbstractConsumer {
       this.opts.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
     }
 
-    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.localKinesis, this.opts.localKinesisPort)
+    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.kinesisEndpoint)
 
     process.on('message', function (msg) {
       if (msg === config.shutdownMessage) {
@@ -181,11 +180,10 @@ export class AbstractConsumer {
     var leaseCounter = this.opts.leaseCounter || null
     var tableName = this.opts.tableName
     var awsConfig = this.opts.awsConfig
-    var localDynamo = !! this.opts.localDynamo
 
     this.log({leaseCounter: leaseCounter, tableName: tableName}, 'Setting up lease')
 
-    this.lease = new lease.Model(id, leaseCounter, tableName, awsConfig, localDynamo)
+    this.lease = new lease.Model(id, leaseCounter, tableName, awsConfig, this.opts.dynamoEndpoint)
   }
 
   // Update the lease in the network database.

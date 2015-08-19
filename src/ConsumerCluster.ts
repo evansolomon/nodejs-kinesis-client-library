@@ -1,6 +1,7 @@
 import events = require('events')
 import nodeCluster = require('cluster')
 import path = require('path')
+import url = require('url')
 
 import _ = require('underscore')
 import AWS = require('aws-sdk')
@@ -21,13 +22,20 @@ interface ClusterWorkerWithOpts extends nodeCluster.Worker {
   opts: {shardId: string}
 }
 
+interface AWSEndpoints {
+  kinesis: string
+  dynamo: string
+}
+
 export interface ConsumerClusterOpts {
   streamName: string
   tableName: string
   awsConfig: AWS.ClientConfig
+  dynamoEndpoint?: string
   localDynamo: Boolean
+  kinesisEndpoint?: string
   localKinesis: Boolean
-  localKinesisPort?: number
+  localKinesisPort?: string
   capacity: cluster.Capacity
   startingIteratorType?: string
   logLevel?: string
@@ -46,6 +54,7 @@ export class ConsumerCluster extends events.EventEmitter {
   private consumers = {}
   private consumerIds = []
   private lastGarbageCollectedAt = Date.now()
+  private endpoints: AWSEndpoints
 
   constructor(pathToConsumer: string, opts: ConsumerClusterOpts) {
     super()
@@ -61,8 +70,13 @@ export class ConsumerCluster extends events.EventEmitter {
       silent: true
     })
 
-    this.cluster = new cluster.Model(this.opts.tableName, this.opts.awsConfig, this.opts.localDynamo)
-    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.localKinesis, this.opts.localKinesisPort)
+    this.endpoints = {
+      kinesis: this.getKinesisEndpoint(),
+      dynamo: this.getDynamoEndpoint()
+    }
+
+    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.endpoints.kinesis)
+    this.cluster = new cluster.Model(this.opts.tableName, this.opts.awsConfig, this.endpoints.dynamo)
     this._init()
   }
 
@@ -74,7 +88,7 @@ export class ConsumerCluster extends events.EventEmitter {
         var tableName = _this.opts.tableName
         var awsConfig = _this.opts.awsConfig
         var localDynamo = _this.opts.localDynamo
-        cluster.Model.tableExists(tableName, awsConfig, localDynamo, done)
+        cluster.Model.tableExists(tableName, awsConfig, _this.getDynamoEndpoint(), done)
       },
 
       createTable: ['tableExists', function (done, data) {
@@ -86,7 +100,7 @@ export class ConsumerCluster extends events.EventEmitter {
         var localDynamo = !! _this.opts.localDynamo
 
         _this.logger.info({table: tableName}, 'Creating DynamoDB table')
-        cluster.Model.createTable(tableName, awsConfig, capacity, localDynamo, done)
+        cluster.Model.createTable(tableName, awsConfig, capacity, _this.getDynamoEndpoint(), done)
       }],
 
       createStream: function (done) {
@@ -110,6 +124,40 @@ export class ConsumerCluster extends events.EventEmitter {
       _this._loopReportClusterToNetwork()
       _this._loopFetchExternalNetwork()
     })
+  }
+
+  private getKinesisEndpoint () {
+    var conf = this.opts.awsConfig
+    var isLocal = this.opts.localKinesis
+    var port = this.opts.localKinesisPort
+    var customEndpoint = this.opts.kinesisEndpoint
+    var endpoint = null
+    if (isLocal) {
+      var endpointConfig = config.localKinesisEndpoint
+      if (port) {
+        endpointConfig.port = port
+      }
+      endpoint = url.format(endpointConfig)
+    } else if (customEndpoint) {
+      endpoint = customEndpoint
+    }
+
+    return endpoint
+  }
+
+  private getDynamoEndpoint () {
+    var conf = this.opts.awsConfig
+    var isLocal = this.opts.localDynamo
+    var customEndpoint = this.opts.dynamoEndpoint
+    var endpoint = null
+    if (isLocal) {
+      var endpointConfig = config.localDynamoDBEndpoint
+      endpoint = url.format(endpointConfig)
+    } else if (customEndpoint) {
+      endpoint = customEndpoint
+    }
+
+    return endpoint
   }
 
   // Run an HTTP server. Useful as a health check.
@@ -211,7 +259,7 @@ export class ConsumerCluster extends events.EventEmitter {
         var tableName = _this.opts.tableName
         var awsConfig = _this.opts.awsConfig
         var localDynamo = !! _this.opts.localDynamo
-        lease.Model.fetchAll(tableName, awsConfig, localDynamo, function (err, leases) {
+        lease.Model.fetchAll(tableName, awsConfig, _this.getDynamoEndpoint(), function (err, leases) {
           if (err) return done(err)
 
           _asyncResults.leases = leases
@@ -273,9 +321,8 @@ export class ConsumerCluster extends events.EventEmitter {
       startingIteratorType: (this.opts.startingIteratorType || '').toUpperCase(),
       shardId: shardId,
       leaseCounter: leaseCounter,
-      localDynamo: this.opts.localDynamo,
-      localKinesis: this.opts.localKinesis,
-      localKinesisPort: this.opts.localKinesisPort,
+      dynamoEndpoint: this.endpoints.dynamo,
+      kinesisEndpoint: this.endpoints.kinesis,
       numRecords: this.opts.numRecords
     }
 

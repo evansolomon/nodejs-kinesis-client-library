@@ -29,10 +29,10 @@ export class Model {
   private static DefaultCapacity = {READ: 10, WRITE: 10}
   private static DB_TYPE = 'cluster'
 
-  public constructor (tableName: string, conf: AWS.ClientConfig, local: Boolean) {
+  public constructor (tableName: string, conf: AWS.ClientConfig, dynamoEndpoint?: string) {
     this.id = [os.hostname(), process.pid, Date.now()].join('@')
 
-    var dynamodb = awsFactory.dynamo(conf, local)
+    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
     this.Cluster = createModel(tableName, dynamodb)
   }
 
@@ -70,9 +70,9 @@ export class Model {
   }
 
   public static createTable (name: string, conf: AWS.ClientConfig, capacity: Capacity,
-    local: Boolean, callback: (e: any) => void)
+    dynamoEndpoint: string, callback: (e: any) => void)
   {
-    var dynamodb = awsFactory.dynamo(conf, local)
+    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
 
     var model = createModel(name, dynamodb)
     var tableStatus
@@ -95,10 +95,10 @@ export class Model {
     })
   }
 
-  public static tableExists (name: string, conf: AWS.ClientConfig, local: Boolean,
+  public static tableExists (name: string, conf: AWS.ClientConfig, dynamoEndpoint: string,
     callback: (err: any, data?: Boolean) => void)
   {
-    var dynamodb = awsFactory.dynamo(conf, local)
+    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
 
     createModel(name, dynamodb).describeTable(function (err) {
       if (err && err.code === 'ResourceNotFoundException') {

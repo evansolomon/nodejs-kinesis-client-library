@@ -25,10 +25,12 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
   }
   aws?: AWS.ClientConfig
   http?: (Boolean|number)
+  'dynamo-endpoint'?: string
   'local-dynamo'?: Boolean
   'local-dynamo-directory'?: string
+  'kinesis-endpoint'?: string
   'local-kinesis'?: Boolean
-  'local-kinesis-port'?: number
+  'local-kinesis-port'?: string
   'local-kinesis-no-start'?: Boolean
   'log-level': string
   'num-records'?: number
@@ -53,8 +55,10 @@ if (args.help) {
   console.log('--aws.[option] [Option value]  (e.g. --aws.region us-west-2)')
   console.log('--http [port]  (Start HTTP server, port defaults to $PORT)')
   console.log('--log-level [level] (Logging verbosity, uses Bunyan log levels)')
+  console.log('--dynamo-endpoint (Use a cusotm endpoint for the DynamoDB service)')
   console.log('--local-dynamo (Whether or not to use a local implementation of DynamoDB, defaults to false)')
   console.log('--local-dynamo-directory (Directory to store local DB, defaults to temp directory)')
+  console.log('--kinesis-endpoint (Use a custom endpoint for the Kinesis service)')
   console.log('--local-kinesis (Use a local implementation of Kinesis, defaults to false)')
   console.log('--local-kinesis-port (Port to access local Kinesis on, defaults to 4567)')
   console.log('--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)')
@@ -69,7 +73,9 @@ var opts = {
   awsConfig: args.aws,
   startingIteratorType: args['start-at'],
   capacity: args.capacity,
+  dynamoEndpoint: args['dynamo-endpoint'],
   localDynamo: !! args['local-dynamo'],
+  kinesisEndpoint: args['kinesis-endpoint'],
   localKinesis: !! args['local-kinesis'],
   localKinesisPort: args['local-kinesis-port'],
   logLevel: args['log-level'],

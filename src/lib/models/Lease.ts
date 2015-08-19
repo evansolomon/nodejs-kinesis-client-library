@@ -29,8 +29,8 @@ export class Model {
   private checkpointedSequence: string
   private static DB_TYPE = 'lease'
 
-  constructor(shardId: string, counter: number, table: string, conf: AWS.ClientConfig, local: Boolean) {
-    var dynamodb = awsFactory.dynamo(conf, local)
+  constructor(shardId: string, counter: number, table: string, conf: AWS.ClientConfig, dynamoEndpoint: string) {
+    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
 
     this.Lease = createModel(table, dynamodb)
     this.shardId = shardId
@@ -88,10 +88,10 @@ export class Model {
     this._update({isFinished: true}, callback)
   }
 
-  public static fetchAll (tableName: string, conf: AWS.ClientConfig, local: Boolean,
+  public static fetchAll (tableName: string, conf: AWS.ClientConfig, dynamoEndpoint: string,
                           callback: (err: any, data: vogels.Queries.Query.Result) => void
   ) {
-    var dynamodb = awsFactory.dynamo(conf, local)
+    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
     createModel(tableName, dynamodb).query(Model.DB_TYPE)
       .loadAll()
       .exec(callback)
