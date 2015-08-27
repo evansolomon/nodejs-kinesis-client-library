@@ -32,6 +32,7 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
   'local-kinesis-no-start'?: Boolean
   'log-level': string
   'num-records'?: number
+  'time-between-reads'?: number
 }
 
 var args = <KinesisCliArgs> minimist(process.argv.slice(2))
@@ -65,6 +66,7 @@ if (args.help) {
   console.log('--local-kinesis-port (Port to access local Kinesis on, defaults to 4567)')
   console.log('--local-kinesis-no-start (Assume a local Kinesis server is already running, defaults to false)')
   console.log('--num-records (Maximum number of records to get in each Kinesis query, defaults to the Kinesis maximum of 10000)')
+  console.log('--time-between-reads (Time to wait between fetching records in milliseconds, defaults to 1000)')
   process.exit()
 }
 
@@ -81,7 +83,8 @@ var opts = {
   localKinesis: !! args['local-kinesis'],
   localKinesisPort: args['local-kinesis-port'],
   logLevel: args['log-level'],
-  numRecords: args['num-records']
+  numRecords: args['num-records'],
+  timeBetweenReads: args['time-between-reads'],
 }
 
 logger.info('Consumer app path:', consumer)

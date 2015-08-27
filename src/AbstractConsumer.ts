@@ -23,6 +23,7 @@ interface AbstractConsumerOpts {
   kinesisEndpoint?: string
   logLevel?: string
   numRecords?: number
+  timeBetweenReads?: number
 }
 
 export interface ProcessRecordsCallback {
@@ -138,7 +139,7 @@ export class AbstractConsumer {
   // Continuously fetch records from the stream.
   private _loopGetRecords () {
     var _this = this
-    var maxCallFrequency = 1000
+    var timeBetweenReads = this.opts.timeBetweenReads || 1000
 
     this.log('Starting getRecords loop')
 
@@ -148,7 +149,7 @@ export class AbstractConsumer {
       _this._getRecords(function (err) {
         if (err) return done(err)
 
-        var timeToWait = Math.max(0, maxCallFrequency - (Date.now() - gotRecordsAt))
+        var timeToWait = Math.max(0, timeBetweenReads - (Date.now() - gotRecordsAt))
 
         if (timeToWait > 0) {
           setTimeout(done, timeToWait)

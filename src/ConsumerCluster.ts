@@ -40,6 +40,7 @@ export interface ConsumerClusterOpts {
   startingIteratorType?: string
   logLevel?: string
   numRecords?: number
+  timeBetweenReads?: number
 }
 
 
@@ -324,6 +325,7 @@ export class ConsumerCluster extends events.EventEmitter {
       dynamoEndpoint: this.endpoints.dynamo,
       kinesisEndpoint: this.endpoints.kinesis,
       numRecords: this.opts.numRecords,
+      timeBetweenReads: this.opts.timeBetweenReads,
       logLevel: this.opts.logLevel
     }
 
