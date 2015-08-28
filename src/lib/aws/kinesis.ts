@@ -20,6 +20,9 @@ export var listShards = function (client: AWS.Kinesis, stream: string, callback:
         foundAllShards = true
       }
 
+      var lastShard = data.StreamDescription.Shards[data.StreamDescription.Shards.length - 1]
+      startShardId = lastShard.ShardId
+
       shards = shards.concat(data.StreamDescription.Shards)
       done()
     })
