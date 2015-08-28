@@ -5,6 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "test": "npm run lint && mocha",
+    "quick-test": "npm run typescript && npm run lint",
     "lint": "tslint src/**/*.ts",
     "clean": "rm -rf build",
     "build": "npm run clean && npm run typescript-definitions && npm run typescript",
