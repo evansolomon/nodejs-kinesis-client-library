@@ -35,8 +35,8 @@ interface KinesisCliArgs extends minimist.ParsedArgs {
   'time-between-reads'?: number
 }
 
-var args = <KinesisCliArgs> minimist(process.argv.slice(2))
-var logger = bunyan.createLogger({
+const args = <KinesisCliArgs> minimist(process.argv.slice(2))
+const logger = bunyan.createLogger({
   name: 'KinesisClusterCLI',
   level: args['log-level']
 })
@@ -70,8 +70,8 @@ if (args.help) {
   process.exit()
 }
 
-var consumer = path.resolve(process.env.PWD, args.consumer || '')
-var opts = {
+const consumer = path.resolve(process.env.PWD, args.consumer || '')
+const opts = {
   tableName: args.table,
   streamName: args.stream,
   awsConfig: args.aws,
@@ -88,7 +88,7 @@ var opts = {
 }
 
 logger.info('Consumer app path:', consumer)
-var clusterOpts = Object.keys(opts).reduce(function (memo, key) {
+const clusterOpts = Object.keys(opts).reduce((memo, key) => {
   if (opts[key] !== undefined) {
     memo[key] = opts[key]
   }
@@ -98,14 +98,14 @@ var clusterOpts = Object.keys(opts).reduce(function (memo, key) {
 logger.info({options: clusterOpts}, 'Cluster options')
 
 async.auto({
-  localDynamo: function (done) {
+  localDynamo: done => {
     if (! opts.localDynamo) {
       return done()
     }
 
     logger.info('Launching local DynamoDB')
 
-    var databaseDir = args['local-dynamo-directory']
+    let databaseDir = args['local-dynamo-directory']
     if (! databaseDir) {
       databaseDir = path.join(os.tmpdir(), 'localdynamo', Date.now().toString())
     }
@@ -118,8 +118,8 @@ async.auto({
     }
 
     // If you ran this with some unusual node executable, let's keep the good times going
-    var nodeExecutable = process.argv[0]
-    var proc = child_process.spawn(nodeExecutable, [
+    const nodeExecutable = process.argv[0]
+    const proc = child_process.spawn(nodeExecutable, [
       './node_modules/local-dynamo/bin/launch_local_dynamo.js',
       '--database_dir', databaseDir,
       '--port', config.localDynamoDBEndpoint.port.toString()
@@ -130,16 +130,16 @@ async.auto({
     proc.stdout.pipe(process.stdout)
     proc.stderr.pipe(process.stderr)
 
-    proc.on('exit', function (code) {
+    proc.on('exit', code => {
       process.exit(code)
-    }).on('error', function (err) {
+    }).on('error', err => {
       logger.error(err, 'Error in local DynamoDB')
       process.exit(1)
     })
 
     // Local Dynamo writes some stuff to stderr when it's ready
-    var finishedStart = false
-    proc.stderr.on('data', function () {
+    let finishedStart = false
+    proc.stderr.on('data', () => {
       if (finishedStart) {
         return
       }
@@ -149,7 +149,7 @@ async.auto({
       setTimeout(done, 500)
     })
   },
-  localKinesis: function (done) {
+  localKinesis: done => {
     if (! opts.localKinesis) {
       return done()
     }
@@ -157,25 +157,25 @@ async.auto({
       return done()
     }
 
-    var port = args['local-kinesis-port'] || config.localKinesisEndpoint.port
+    const port = args['local-kinesis-port'] || config.localKinesisEndpoint.port
 
-    var proc = child_process.spawn('./node_modules/.bin/kinesalite', [
+    const proc = child_process.spawn('./node_modules/.bin/kinesalite', [
       '--port', port.toString()
     ], {
       cwd: path.resolve(__dirname, '../..')
     })
 
-    proc.on('error', function (err) {
+    proc.on('error', err => {
       logger.error(err, 'Error in local Kinesis')
       process.exit(1)
     })
 
-    var timer = setTimeout(function () {
+    const timer = setTimeout(() => {
       done(new Error('Local Kinesis took too long to start'))
     }, 5000)
 
-    var output = ''
-    proc.stdout.on('data', function (chunk) {
+    let output = ''
+    proc.stdout.on('data', chunk => {
       output += chunk
       if (output.indexOf('Listening') === -1) {
         return
@@ -186,9 +186,9 @@ async.auto({
       clearTimeout(timer)
     })
   },
-  cluster: ['localDynamo', 'localKinesis', function (done) {
+  cluster: ['localDynamo', 'localKinesis', done => {
     logger.info('Launching cluster')
-    var cluster
+    let cluster
     try {
       cluster = new ConsumerCluster.ConsumerCluster(consumer, opts)
     } catch (e) {
@@ -200,7 +200,7 @@ async.auto({
     logger.info('Spawned cluster %s', cluster.cluster.id)
 
     if (args.http) {
-      var port
+      let port
       if (typeof args.http === 'number') {
         port = args.http
       } else {
@@ -211,7 +211,7 @@ async.auto({
       cluster.serveHttp(port)
     }
   }]
-}, function (err) {
+}, err => {
   if (err) {
     logger.error(err)
     process.exit(1)
