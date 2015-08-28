@@ -90,11 +90,11 @@ export class AbstractConsumer {
 
     this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.kinesisEndpoint)
 
-    process.on('message', function (msg) {
+    process.on('message', msg => {
       if (msg === config.shutdownMessage) {
-        this._exit()
+        this._exit(null)
       }
-    }.bind(this))
+    })
 
     this.logger = bunyan.createLogger({
       name: 'KinesisConsumer',
@@ -111,30 +111,29 @@ export class AbstractConsumer {
   }
 
   private _init () {
-    var _this = this
     this._setupLease()
 
     async.series([
-      _this.initialize.bind(_this),
-      _this._reserveLease.bind(_this),
-      function (done) {
-        _this.lease.getCheckpoint(function (err, checkpoint) {
+      this.initialize.bind(this),
+      this._reserveLease.bind(this),
+      done => {
+        this.lease.getCheckpoint((err, checkpoint) => {
           if (err) {
             return done(err)
           }
 
-          _this.log({checkpoint: checkpoint}, 'Got starting checkpoint')
-          _this.maxSequenceNumber = checkpoint
-          _this._updateShardIterator(checkpoint, done)
+          this.log({checkpoint: checkpoint}, 'Got starting checkpoint')
+          this.maxSequenceNumber = checkpoint
+          this._updateShardIterator(checkpoint, done)
         })
       }
-    ], function (err) {
+    ], err => {
       if (err) {
-        return _this._exit(err)
+        return this._exit(err)
       }
 
-      _this._loopGetRecords()
-      _this._loopReserveLease()
+      this._loopGetRecords()
+      this._loopReserveLease()
     })
   }
 
@@ -144,20 +143,19 @@ export class AbstractConsumer {
 
   // Continuously fetch records from the stream.
   private _loopGetRecords () {
-    var _this = this
-    var timeBetweenReads = this.timeBetweenReads
+    const timeBetweenReads = this.timeBetweenReads
 
     this.log('Starting getRecords loop')
 
-    async.forever(function (done) {
-      var gotRecordsAt = Date.now()
+    async.forever(done => {
+      const gotRecordsAt = Date.now()
 
-      _this._getRecords(function (err) {
+      this._getRecords(err => {
         if (err) {
           return done(err)
         }
 
-        var timeToWait = Math.max(0, timeBetweenReads - (Date.now() - gotRecordsAt))
+        const timeToWait = Math.max(0, timeBetweenReads - (Date.now() - gotRecordsAt))
 
         if (timeToWait > 0) {
           setTimeout(done, timeToWait)
@@ -165,30 +163,28 @@ export class AbstractConsumer {
           done()
         }
       })
-    }, function (err) {
-      _this._exit(err)
+    }, err => {
+      this._exit(err)
     })
   }
 
   // Continuously update this consumer's lease reservation.
   private _loopReserveLease () {
-    var _this = this
-
     this.log('Starting reserveLease loop')
 
-    async.forever(function (done) {
-      setTimeout(_this._reserveLease.bind(_this, done), 5000)
-    }, function (err) {
-      _this._exit(err)
+    async.forever(done => {
+      setTimeout(this._reserveLease.bind(this, done), 5000)
+    }, err => {
+      this._exit(err)
     })
   }
 
   // Setup the initial lease reservation state.
   private _setupLease () {
-    var id = this.opts.shardId
-    var leaseCounter = this.opts.leaseCounter || null
-    var tableName = this.opts.tableName
-    var awsConfig = this.opts.awsConfig
+    const id = this.opts.shardId
+    const leaseCounter = this.opts.leaseCounter || null
+    const tableName = this.opts.tableName
+    const awsConfig = this.opts.awsConfig
 
     this.log({leaseCounter: leaseCounter, tableName: tableName}, 'Setting up lease')
 
@@ -203,47 +199,42 @@ export class AbstractConsumer {
 
   // Mark the consumer's shard as finished, then exit.
   private _markFinished () {
-    var _this = this
     this.log('Marking shard as finished')
 
-    this.lease.markFinished(function (err) {
-      _this._exit(err)
-    })
+    this.lease.markFinished(err => this._exit(err))
   }
 
   // Get records from the stream and wait for them to be processed.
   private _getRecords (callback) {
-    var _this = this
-
-    var getRecordsParams = {ShardIterator: this.nextShardIterator}
+    let getRecordsParams = {ShardIterator: this.nextShardIterator}
     if (this.opts.numRecords && this.opts.numRecords > 0) {
       getRecordsParams = {ShardIterator: this.nextShardIterator, Limit: this.opts.numRecords}
     }
 
-    this.kinesis.getRecords(getRecordsParams, function (err, data) {
+    this.kinesis.getRecords(getRecordsParams, (err, data) => {
       // Handle known errors
       if (err && err.code === 'ExpiredIteratorException') {
-        _this.log('Shard iterator expired, updating before next getRecords call')
-        return _this._updateShardIterator(_this.maxSequenceNumber, function (err) {
+        this.log('Shard iterator expired, updating before next getRecords call')
+        return this._updateShardIterator(this.maxSequenceNumber, err => {
           if (err) {
             return callback(err)
           }
 
-          _this._getRecords(callback)
+          this._getRecords(callback)
         })
       }
 
       if (err && err.code === 'ProvisionedThroughputExceededException') {
-        _this.log('Provisioned throughput exceeded, pausing before next getRecords call', {
-          delay: _this.throughputErrorDelay
+        this.log('Provisioned throughput exceeded, pausing before next getRecords call', {
+          delay: this.throughputErrorDelay
         })
-        return setTimeout(function () {
-          _this._increaseThroughputErrorDelay()
-          _this._getRecords(callback)
-        }, _this.throughputErrorDelay)
+        return setTimeout(() => {
+          this._increaseThroughputErrorDelay()
+          this._getRecords(callback)
+        }, this.throughputErrorDelay)
       }
 
-      _this._resetThroughputErrorDelay()
+      this._resetThroughputErrorDelay()
 
       // We have an error but don't know how to handle it
       if (err) {
@@ -252,26 +243,25 @@ export class AbstractConsumer {
 
       // Save this in case we need to checkpoint it in a future request before we get more records
       if (data.NextShardIterator != null) {
-        _this.nextShardIterator = data.NextShardIterator
+        this.nextShardIterator = data.NextShardIterator
       }
 
       // We have processed all the data from a closed stream
       if (data.NextShardIterator == null && (! data.Records || data.Records.length === 0)) {
-        _this.log({data: data}, 'Marking shard as finished')
-        return _this._markFinished()
+        this.log({data: data}, 'Marking shard as finished')
+        return this._markFinished()
       }
 
-      var lastSequenceNumber = _.pluck(data.Records, 'SequenceNumber').pop()
-      _this.maxSequenceNumber = lastSequenceNumber || _this.maxSequenceNumber
+      const lastSequenceNumber = _.pluck(data.Records, 'SequenceNumber').pop()
+      this.maxSequenceNumber = lastSequenceNumber || this.maxSequenceNumber
 
-      _this._processResponse(data, callback)
+      this._processResponse(data, callback)
     })
   }
 
   // Wrap the child's processResponse method to handle checkpointing.
   private _processResponse (data, callback) {
-    var _this = this
-    this.processResponse(data, function (err, checkpointSequenceNumber) {
+    this.processResponse(data, (err, checkpointSequenceNumber) => {
       if (err) {
         return callback(err)
       }
@@ -281,23 +271,22 @@ export class AbstractConsumer {
         return callback()
       }
       // We haven't actually gotten any records so there is nothing to checkpoint
-      if (! _this.maxSequenceNumber) {
+      if (! this.maxSequenceNumber) {
         return callback()
       }
 
       // Default case to checkpoint the latest sequence number
       if (checkpointSequenceNumber === true) {
-        checkpointSequenceNumber = _this.maxSequenceNumber
+        checkpointSequenceNumber = this.maxSequenceNumber
       }
 
-      _this.lease.checkpoint(<string> checkpointSequenceNumber, callback)
+      this.lease.checkpoint(<string> checkpointSequenceNumber, callback)
     })
   }
 
   // Get a new shard iterator from Kinesis.
   private _updateShardIterator (sequenceNumber, callback) {
-    var _this = this
-    var type
+    let type
     if (sequenceNumber) {
       type = AbstractConsumer.ShardIteratorTypes.AFTER_SEQUENCE_NUMBER
     } else {
@@ -306,46 +295,45 @@ export class AbstractConsumer {
 
     this.log({iteratorType: type, sequenceNumber: sequenceNumber}, 'Updating shard iterator')
 
-    var params = {
+    const params = {
       StreamName: this.opts.streamName,
       ShardId: this.opts.shardId,
       ShardIteratorType: type,
       StartingSequenceNumber: sequenceNumber
     }
 
-    this.kinesis.getShardIterator(params, function (e, data) {
+    this.kinesis.getShardIterator(params, (e, data) => {
       if (e) {
         return callback(e)
       }
 
-      _this.log(data, 'Updated shard iterator')
-      _this.nextShardIterator = data.ShardIterator
+      this.log(data, 'Updated shard iterator')
+      this.nextShardIterator = data.ShardIterator
       callback()
     })
   }
 
   // Exit the consumer with its optional shutdown process.
   private _exit (err) {
-    var _this = this
-
     if (this.hasStartedExit) {
       return
     }
+
     this.hasStartedExit = true
 
     if (err) {
       this.logger.error(err)
     }
 
-    setTimeout(function () {
-      _this.logger.error('Forcing exit based on shutdown timeout')
+    setTimeout(() => {
+      this.logger.error('Forcing exit based on shutdown timeout')
       // Exiting with 1 because the shutdown process took too long
       process.exit(1)
     }, 30000)
 
     this.log('Starting shutdown')
-    this.shutdown(function () {
-      var exitCode = err == null ? 0 : 1
+    this.shutdown(() => {
+      const exitCode = err == null ? 0 : 1
       process.exit(exitCode)
     })
   }
@@ -360,13 +348,13 @@ export class AbstractConsumer {
 
   // Create a child consumer.
   public static extend (args: ConsumerExtension) {
-    var opts = JSON.parse(process.env.CONSUMER_INSTANCE_OPTS)
+    const opts = JSON.parse(process.env.CONSUMER_INSTANCE_OPTS)
     function Ctor() {
       AbstractConsumer.call(this, opts)
     }
     util.inherits(Ctor, AbstractConsumer)
 
-    var methods = ['processRecords', 'initialize', 'shutdown']
+    const methods = ['processRecords', 'initialize', 'shutdown']
     methods.forEach(function (method) {
       if (! args[method]) {
         return
