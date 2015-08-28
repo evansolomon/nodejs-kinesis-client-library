@@ -1,14 +1,13 @@
-import util = require('util')
+import * as util from 'util'
 
-import _ = require('underscore')
-import AWS = require('aws-sdk')
-import async = require('async')
-import bunyan = require('bunyan')
+import * as _ from 'underscore'
+import * as async from 'async'
+import * as AWS from 'aws-sdk'
+import * as bunyan from 'bunyan'
 
-import awsFactory = require('./lib/aws/factory')
-import config = require('./lib/config')
-
-import lease = require('./lib/models/Lease')
+import * as awsFactory from './lib/aws/factory'
+import config from './lib/config'
+import * as lease from './lib/models/Lease'
 
 
 interface AbstractConsumerOpts {

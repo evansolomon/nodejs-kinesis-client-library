@@ -1,21 +1,21 @@
-import events = require('events')
-import nodeCluster = require('cluster')
-import path = require('path')
-import url = require('url')
+import * as events from 'events'
+import * as nodeCluster from 'cluster'
+import * as path from 'path'
+import * as url from 'url'
 
-import _ = require('underscore')
-import AWS = require('aws-sdk')
-import async = require('async')
-import bunyan = require('bunyan')
-import vogels = require('vogels')
+import * as _ from 'underscore'
+import * as async from 'async'
+import * as AWS from 'aws-sdk'
+import * as bunyan from 'bunyan'
+import * as vogels from 'vogels'
 
-import awsFactory = require('./lib/aws/factory')
-import config = require('./lib/config')
-import kinesis = require('./lib/aws/kinesis')
-import lease = require('./lib/models/Lease')
-import cluster = require('./lib/models/Cluster')
-import stream = require('./lib/models/Stream')
-import server = require('./lib/server')
+import * as awsFactory from './lib/aws/factory'
+import config from './lib/config'
+import * as kinesis from './lib/aws/kinesis'
+import * as lease from './lib/models/Lease'
+import * as cluster from './lib/models/Cluster'
+import * as stream from './lib/models/Stream'
+import * as server from './lib/server'
 
 
 interface ClusterWorkerWithOpts extends nodeCluster.Worker {

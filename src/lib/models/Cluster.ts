@@ -1,10 +1,10 @@
-import os = require('os')
+import * as os from 'os'
 
-import async = require('async')
-import vogels = require('vogels')
+import * as async from 'async'
+import * as vogels from 'vogels'
 
-import AWS = require('aws-sdk')
-import awsFactory = require('../aws/factory')
+import * as AWS from 'aws-sdk'
+import * as awsFactory from '../aws/factory'
 
 function createModel(tableName: string, dynamodb: AWS.DynamoDB) {
   var Cluster = vogels.define('Cluster', function (schema) {

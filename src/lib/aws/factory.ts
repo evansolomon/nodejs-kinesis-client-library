@@ -1,10 +1,6 @@
-/**
- * @fileoverview Wrap construction for AWS services.
- */
+import * as AWS from 'aws-sdk'
 
-import AWS = require('aws-sdk')
-
-export var kinesis = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kinesis {
+let kinesis = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kinesis {
   var instance =  new AWS.Kinesis(awsConfig || {})
   if (endpoint) {
     instance.setEndpoint(endpoint)
@@ -13,7 +9,7 @@ export var kinesis = function (awsConfig:AWS.ClientConfig, endpoint?:string) : A
   return instance
 }
 
-export var dynamo = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.DynamoDB {
+let dynamo = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.DynamoDB {
   var instance =  new AWS.DynamoDB(awsConfig || {})
   if (endpoint) {
     instance.setEndpoint(endpoint)
@@ -21,3 +17,5 @@ export var dynamo = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AW
 
   return instance
 }
+
+export {kinesis, dynamo}

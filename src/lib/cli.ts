@@ -1,15 +1,15 @@
-import os = require('os')
-import path = require('path')
-import child_process = require('child_process')
+import * as os from 'os'
+import * as path from 'path'
+import * as child_process from 'child_process'
 
-import AWS = require('aws-sdk')
-import async = require('async')
-import minimist = require('minimist')
-import mkdirp = require('mkdirp')
-import bunyan = require('bunyan')
+import * as async from 'async'
+import * as AWS from 'aws-sdk'
+import * as bunyan from 'bunyan'
+import * as minimist from 'minimist'
+import * as mkdirp from 'mkdirp'
 
-import ConsumerCluster = require('../ConsumerCluster')
-import config = require('./config')
+import config from './config'
+import * as ConsumerCluster from '../ConsumerCluster'
 
 interface KinesisCliArgs extends minimist.ParsedArgs {
   help: Boolean

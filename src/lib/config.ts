@@ -12,4 +12,4 @@ var config = {
   }
 }
 
-export = config
+export default config

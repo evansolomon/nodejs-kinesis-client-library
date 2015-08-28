@@ -2,7 +2,7 @@ import async = require('async')
 import AWS = require('aws-sdk')
 
 export interface ListShardsCallback {(err: any, data?: AWS.kinesis.Shard[]): void}
-export var listShards = function (client: AWS.Kinesis, stream: string, callback: ListShardsCallback) {
+let listShards = function (client: AWS.Kinesis, stream: string, callback: ListShardsCallback) {
   var shards = []
   var foundAllShards = false
   var startShardId
@@ -43,3 +43,5 @@ export var listShards = function (client: AWS.Kinesis, stream: string, callback:
 
   async.doUntil(next, test, finish)
 }
+
+export {listShards}

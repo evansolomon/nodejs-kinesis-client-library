@@ -1,8 +1,8 @@
-import AWS = require('aws-sdk')
-import vogels = require('vogels')
-import _ = require('underscore')
+import * as AWS from 'aws-sdk'
+import * as vogels from 'vogels'
+import * as _ from 'underscore'
 
-import awsFactory = require('../aws/factory')
+import * as awsFactory from '../aws/factory'
 
 function createModel(tableName: string, dynamodb: AWS.DynamoDB) {
   var Lease = vogels.define('Lease', function (schema) {

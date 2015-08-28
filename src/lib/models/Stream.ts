@@ -1,5 +1,5 @@
-import async = require('async')
-import AWS = require('aws-sdk')
+import * as AWS from 'aws-sdk'
+import * as async from 'async'
 
 export class Stream {
   private name: string
