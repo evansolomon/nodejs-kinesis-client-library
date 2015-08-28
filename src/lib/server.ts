@@ -1,13 +1,15 @@
-import http = require('http')
+import * as http from 'http'
 
-export var create = function (port: number|string, callback: () => Stringable) {
-  var server = http.createServer(function (req, res) {
+const responseHeaders = {'Content-Type': 'text/plain'}
+
+const create = (port: number|string, callback: () => Stringable) => {
+  const server = http.createServer((req, res) => {
     try {
-      var response = callback()
-      res.writeHead(200, {'Content-Type': 'text/plain'})
+      const response = callback()
+      res.writeHead(200, responseHeaders)
       res.end(response.toString())
     } catch (e) {
-      res.writeHead(500, {'Content-Type': 'text/plain'})
+      res.writeHead(500, responseHeaders)
       res.end(e.toString())
     }
   })
@@ -16,5 +18,7 @@ export var create = function (port: number|string, callback: () => Stringable) {
 }
 
 export interface Stringable {
-  toString: () => string;
+  toString: () => string
 }
+
+export {create}
