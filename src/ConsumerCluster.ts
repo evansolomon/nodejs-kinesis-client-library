@@ -82,66 +82,67 @@ export class ConsumerCluster extends events.EventEmitter {
   }
 
   private _init () {
-    var _this = this
-
     async.auto({
-      tableExists: function (done) {
-        var tableName = _this.opts.tableName
-        var awsConfig = _this.opts.awsConfig
-        cluster.Model.tableExists(tableName, awsConfig, _this.getDynamoEndpoint(), done)
+      tableExists: done => {
+        const tableName = this.opts.tableName
+        const awsConfig = this.opts.awsConfig
+        cluster.Model.tableExists(tableName, awsConfig, this.getDynamoEndpoint(), done)
       },
 
-      createTable: ['tableExists', function (done, data) {
+      createTable: ['tableExists', (done, data) => {
         if (data.tableExists) {
           return done()
         }
 
-        var tableName = _this.opts.tableName
-        var awsConfig = _this.opts.awsConfig
-        var capacity = _this.opts.capacity || {}
+        const tableName = this.opts.tableName
+        const awsConfig = this.opts.awsConfig
+        const capacity = this.opts.capacity || {}
 
-        _this.logger.info({table: tableName}, 'Creating DynamoDB table')
-        cluster.Model.createTable(tableName, awsConfig, capacity, _this.getDynamoEndpoint(), done)
+        this.logger.info({table: tableName}, 'Creating DynamoDB table')
+        cluster.Model.createTable(tableName, awsConfig, capacity, this.getDynamoEndpoint(), done)
       }],
 
-      createStream: function (done) {
-        var streamName = _this.opts.streamName
-        var streamModel = new stream.Stream(streamName, _this.kinesis)
+      createStream: done => {
+        const streamName = this.opts.streamName
+        const streamModel = new stream.Stream(streamName, this.kinesis)
 
-        streamModel.exists(function (err, exists) {
+        streamModel.exists((err, exists) => {
           if (err) {
             return done(err)
           }
+
           if (exists) {
             return done()
           }
 
-          _this.kinesis.createStream({StreamName: streamName, ShardCount: 1}, function (err) {
+          this.kinesis.createStream({StreamName: streamName, ShardCount: 1}, err => {
             if (err) {
               return done(err)
             }
+
             streamModel.onActive(done)
           })
         })
       }
-    }, function (err) {
+    }, err => {
       if (err) {
-        return _this._logAndEmitError(err, 'Error ensuring Dynamo table exists')
+        return this._logAndEmitError(err, 'Error ensuring Dynamo table exists')
       }
 
-      _this._bindListeners()
-      _this._loopReportClusterToNetwork()
-      _this._loopFetchExternalNetwork()
+      this._bindListeners()
+      this._loopReportClusterToNetwork()
+      this._loopFetchExternalNetwork()
     })
   }
 
   private getKinesisEndpoint () {
-    var isLocal = this.opts.localKinesis
-    var port = this.opts.localKinesisPort
-    var customEndpoint = this.opts.kinesisEndpoint
-    var endpoint = null
+    const isLocal = this.opts.localKinesis
+    const port = this.opts.localKinesisPort
+    const customEndpoint = this.opts.kinesisEndpoint
+    let endpoint = null
+
     if (isLocal) {
-      var endpointConfig = config.localKinesisEndpoint
+      const endpointConfig = config.localKinesisEndpoint
       if (port) {
         endpointConfig.port = port
       }
@@ -154,9 +155,10 @@ export class ConsumerCluster extends events.EventEmitter {
   }
 
   private getDynamoEndpoint () {
-    var isLocal = this.opts.localDynamo
-    var customEndpoint = this.opts.dynamoEndpoint
-    var endpoint = null
+    const isLocal = this.opts.localDynamo
+    const customEndpoint = this.opts.dynamoEndpoint
+    let endpoint = null
+
     if (isLocal) {
       var endpointConfig = config.localDynamoDBEndpoint
       endpoint = url.format(endpointConfig)
@@ -170,37 +172,33 @@ export class ConsumerCluster extends events.EventEmitter {
   // Run an HTTP server. Useful as a health check.
   public serveHttp (port: string|number) {
     this.logger.debug('Starting HTTP server on port %s', port)
-    server.create(port, function () {
-      return this.consumerIds.length
-    }.bind(this))
+    server.create(port, () => this.consumerIds.length)
   }
 
   private _bindListeners () {
-    var _this = this
+    this.on('updateNetwork', () => {
+      this._garbageCollectClusters()
 
-    this.on('updateNetwork', function () {
-      _this._garbageCollectClusters()
-
-      if (_this._shouldTryToAcquireMoreShards()) {
-        _this.logger.debug('Should try to acquire more shards')
-        _this._fetchAvailableShard()
-      } else if (_this._hasTooManyShards()) {
-        _this.logger.debug({consumerIds: _this.consumerIds}, 'Have too many shards')
-        _this._killConsumer(function (err) {
+      if (this._shouldTryToAcquireMoreShards()) {
+        this.logger.debug('Should try to acquire more shards')
+        this._fetchAvailableShard()
+      } else if (this._hasTooManyShards()) {
+        this.logger.debug({consumerIds: this.consumerIds}, 'Have too many shards')
+        this._killConsumer(err => {
           if (err) {
-            _this._logAndEmitError(err)
+            this._logAndEmitError(err)
           }
         })
       }
     })
 
-    this.on('availableShard', function (shardId, leaseCounter) {
+    this.on('availableShard', (shardId, leaseCounter) => {
       // Stops accepting consumers, since the cluster will be reset based one an error
-      if (_this.isShuttingDownFromError) {
+      if (this.isShuttingDownFromError) {
         return
       }
 
-      _this._spawn(shardId, leaseCounter)
+      this._spawn(shardId, leaseCounter)
     })
 
   }
@@ -211,14 +209,14 @@ export class ConsumerCluster extends events.EventEmitter {
       return true
     }
 
-    var externalNetwork = this.externalNetwork
-    var networkKeys = Object.keys(externalNetwork)
+    const externalNetwork = this.externalNetwork
+    const networkKeys = Object.keys(externalNetwork)
     if (networkKeys.length === 0) {
       return true
     }
 
-    var lowestInOutterNetwork = networkKeys.reduce(function (memo, key) {
-      var count = externalNetwork[key]
+    const lowestInOutterNetwork = networkKeys.reduce((memo, key) => {
+      const count = externalNetwork[key]
       if (count < memo) {
         memo = count
       }
@@ -231,15 +229,15 @@ export class ConsumerCluster extends events.EventEmitter {
 
   // Determine if we have too many shards compared to the rest of the network.
   private _hasTooManyShards () {
-    var externalNetwork = this.externalNetwork
+    const externalNetwork = this.externalNetwork
 
-    var networkKeys = Object.keys(externalNetwork)
+    const networkKeys = Object.keys(externalNetwork)
     if (networkKeys.length === 0) {
       return false
     }
 
-    var lowestInOutterNetwork = networkKeys.reduce(function (memo, key) {
-      var count = externalNetwork[key]
+    const lowestInOutterNetwork = networkKeys.reduce((memo, key) => {
+      const count = externalNetwork[key]
       if (count < memo) {
         memo = count
       }
@@ -252,26 +250,25 @@ export class ConsumerCluster extends events.EventEmitter {
 
   // Fetch data about unleased shards.
   private _fetchAvailableShard () {
-    var _this = this
     // Hack around typescript
     var _asyncResults = <{allShardIds: string[]; leases: vogels.Queries.Query.Result;}> {}
 
     async.parallel({
-      allShardIds: function (done) {
-        kinesis.listShards(_this.kinesis, _this.opts.streamName, function (err, shards) {
+      allShardIds: done => {
+        kinesis.listShards(this.kinesis, this.opts.streamName, (err, shards) => {
           if (err) {
             return done(err)
           }
 
-          var shardIds = _.pluck(shards, 'ShardId')
+          const shardIds = _.pluck(shards, 'ShardId')
           _asyncResults.allShardIds = shardIds
           done()
         })
       },
-      leases: function (done) {
-        var tableName = _this.opts.tableName
-        var awsConfig = _this.opts.awsConfig
-        lease.Model.fetchAll(tableName, awsConfig, _this.getDynamoEndpoint(), function (err, leases) {
+      leases: done => {
+        const tableName = this.opts.tableName
+        const awsConfig = this.opts.awsConfig
+        lease.Model.fetchAll(tableName, awsConfig, this.getDynamoEndpoint(), (err, leases) => {
           if (err) {
             return done(err)
           }
@@ -280,38 +277,38 @@ export class ConsumerCluster extends events.EventEmitter {
           done()
         })
       }
-    }, function (err) {
+    }, err => {
       if (err) {
-        return _this._logAndEmitError(err, 'Error fetching available shards')
+        return this._logAndEmitError(err, 'Error fetching available shards')
       }
 
-      var allShardIds = _asyncResults.allShardIds
-      var leases = _asyncResults.leases
-      var leaseItems = leases.Items
+      const allShardIds = _asyncResults.allShardIds
+      const leases = _asyncResults.leases
+      const leaseItems = leases.Items
 
-      var finishedShardIds = leaseItems.filter(function (lease) {
+      const finishedShardIds = leaseItems.filter(lease => {
         return lease.get('isFinished')
-      }).map(function (lease) {
+      }).map(lease => {
         return <string> lease.get('id')
       })
 
-      var allUnfinishedShardIds = allShardIds.filter(function (id) {
+      const allUnfinishedShardIds = allShardIds.filter(id => {
         return finishedShardIds.indexOf(id) === -1
       })
 
-      var leasedShardIds = leaseItems.map(function (item) {
+      const leasedShardIds = leaseItems.map(item => {
         return item.get('id')
       })
-      var newShardIds = _.difference(allUnfinishedShardIds, leasedShardIds)
+      const newShardIds = _.difference(allUnfinishedShardIds, leasedShardIds)
 
       // If there are shards theat have not been leased, pick one
       if (newShardIds.length > 0) {
-        _this.logger.info({newShardIds: newShardIds}, 'Unleased shards available')
-        return _this.emit('availableShard', newShardIds[0], null)
+        this.logger.info({newShardIds: newShardIds}, 'Unleased shards available')
+        return this.emit('availableShard', newShardIds[0], null)
       }
 
       // Try to find the first expired lease
-      var currentLease
+      let currentLease
       for (var i = 0; i < leaseItems.length; i++) {
         currentLease = leaseItems[i]
         if (currentLease.get('expiresAt') > Date.now()) {
@@ -321,10 +318,10 @@ export class ConsumerCluster extends events.EventEmitter {
           continue
         }
 
-        var shardId = currentLease.get('id')
-        var leaseCounter = currentLease.get('leaseCounter')
-        _this.logger.info({shardId: shardId, leaseCounter: leaseCounter}, 'Found available shard')
-        return _this.emit('availableShard', shardId, leaseCounter)
+        let shardId = currentLease.get('id')
+        let leaseCounter = currentLease.get('leaseCounter')
+        this.logger.info({shardId: shardId, leaseCounter: leaseCounter}, 'Found available shard')
+        return this.emit('availableShard', shardId, leaseCounter)
       }
     })
   }
@@ -332,7 +329,7 @@ export class ConsumerCluster extends events.EventEmitter {
   // Create a new consumer processes.
   private _spawn (shardId: string, leaseCounter: number) {
     this.logger.info({shardId: shardId, leaseCounter: leaseCounter}, 'Spawning consumer')
-    var consumerOpts = {
+    const consumerOpts = {
       tableName: this.opts.tableName,
       awsConfig: this.opts.awsConfig,
       streamName: this.opts.streamName,
@@ -346,12 +343,12 @@ export class ConsumerCluster extends events.EventEmitter {
       logLevel: this.opts.logLevel
     }
 
-    var env = {
+    const env = {
       CONSUMER_INSTANCE_OPTS: JSON.stringify(consumerOpts),
       CONSUMER_SUPER_CLASS_PATH: path.join(__dirname, 'AbstractConsumer.js')
     }
 
-    var consumer = <ClusterWorkerWithOpts> nodeCluster.fork(env)
+    const consumer = <ClusterWorkerWithOpts> nodeCluster.fork(env)
     consumer.opts = consumerOpts
     consumer.process.stdout.pipe(process.stdout)
     consumer.process.stderr.pipe(process.stderr)
@@ -363,18 +360,18 @@ export class ConsumerCluster extends events.EventEmitter {
     this.consumerIds.push(consumer.id)
     this.consumers[consumer.id] = consumer
 
-    consumer.once('exit', function (code) {
-      var logMethod = code === 0 ? 'info' : 'error'
+    consumer.once('exit', code => {
+      const logMethod = code === 0 ? 'info' : 'error'
       this.logger[logMethod]({shardId: consumer.opts.shardId, exitCode: code}, 'Consumer exited')
 
       this.consumerIds = _.without(this.consumerIds, consumer.id)
       delete this.consumers[consumer.id]
-    }.bind(this))
+    })
   }
 
   // Kill any consumer in the cluster.
   private _killConsumer (callback: (err: any) => void) {
-    var id = this.consumerIds[0]
+    const id = this.consumerIds[0]
     this._killConsumerById(id, callback)
   }
 
@@ -382,8 +379,8 @@ export class ConsumerCluster extends events.EventEmitter {
   private _killConsumerById (id: number, callback: (err: any) => void) {
     this.logger.info({id: id}, 'Killing consumer')
 
-    var callbackWasCalled = false
-    var wrappedCallback = function (err: any) {
+    let callbackWasCalled = false
+    const wrappedCallback = (err: any) => {
       if (callbackWasCalled) {
         return
       }
@@ -393,16 +390,16 @@ export class ConsumerCluster extends events.EventEmitter {
 
     // Force kill the consumer in 40 seconds, giving enough time for the consumer's shutdown
     // process to finish
-    var timer = setTimeout(function () {
+    const timer = setTimeout(() => {
       if (this.consumers[id]) {
         this.consumers[id].kill()
       }
       wrappedCallback(new Error('Consumer did not exit in time'))
-    }.bind(this), 40000)
+    }, 40000)
 
-    this.consumers[id].once('exit', function (code) {
+    this.consumers[id].once('exit', code => {
       clearTimeout(timer)
-      var err = null
+      let err = null
       if (code > 0) {
         err = new Error('Consumer process exited with code: ' + code)
       }
@@ -419,11 +416,10 @@ export class ConsumerCluster extends events.EventEmitter {
 
   // Continuously fetch data about the rest of the network.
   private _loopFetchExternalNetwork () {
-    var _this = this
     this.logger.info('Starting external network fetch loop')
 
-    function fetchThenWait(done) {
-      _this._fetchExternalNetwork(function (err) {
+    const fetchThenWait = done => {
+      this._fetchExternalNetwork(function (err) {
         if (err) {
           return done(err)
         }
@@ -431,8 +427,8 @@ export class ConsumerCluster extends events.EventEmitter {
       })
     }
 
-    function handleError(err) {
-      _this._logAndEmitError(err, 'Error fetching external network data')
+    const handleError = err => {
+      this._logAndEmitError(err, 'Error fetching external network data')
     }
 
     async.forever(fetchThenWait, handleError)
@@ -440,32 +436,29 @@ export class ConsumerCluster extends events.EventEmitter {
 
   // Fetch data about the rest of the network.
   private _fetchExternalNetwork (callback: (err?: any) => void) {
-    var _this = this
-
-    this.cluster.fetchAll(function (err, clusters) {
+    this.cluster.fetchAll((err, clusters) => {
       if (err) {
         return callback(err)
       }
 
-      _this.externalNetwork = clusters.Items.filter(function (cluster) {
-        return cluster.get('id') !== _this.cluster.id
-      }).reduce(function (memo, cluster) {
+      this.externalNetwork = clusters.Items.filter(cluster => {
+        return cluster.get('id') !== this.cluster.id
+      }).reduce((memo, cluster) => {
         memo[cluster.get('id')] = cluster.get('activeConsumers')
         return memo
       }, {})
 
-      _this.logger.debug({externalNetwork: _this.externalNetwork}, 'Updated external network')
-      _this.emit('updateNetwork')
+      this.logger.debug({externalNetwork: this.externalNetwork}, 'Updated external network')
+      this.emit('updateNetwork')
       callback()
     })
   }
 
   // Continuously publish data about this cluster to the network.
   private _loopReportClusterToNetwork () {
-    var _this = this
     this.logger.info('Starting report cluster loop')
-    function reportThenWait(done) {
-      _this._reportClusterToNetwork(function (err) {
+    const reportThenWait = done => {
+      this._reportClusterToNetwork(err => {
         if (err) {
           return done(err)
         }
@@ -474,8 +467,8 @@ export class ConsumerCluster extends events.EventEmitter {
       })
     }
 
-    function handleError(err) {
-      _this._logAndEmitError(err, 'Error reporting cluster to network')
+    const handleError = err => {
+      this._logAndEmitError(err, 'Error reporting cluster to network')
     }
 
     async.forever(reportThenWait, handleError)
@@ -494,7 +487,7 @@ export class ConsumerCluster extends events.EventEmitter {
     }
 
     this.lastGarbageCollectedAt = Date.now()
-    this.cluster.garbageCollect(function (err, garbageCollectedClusters) {
+    this.cluster.garbageCollect((err, garbageCollectedClusters) => {
       if (err) {
         this.logger.error(err, 'Error garbage collecting clusters, continuing cluster execution anyway')
         return
@@ -503,7 +496,7 @@ export class ConsumerCluster extends events.EventEmitter {
       if (garbageCollectedClusters.length) {
         this.logger.info('Garbage collected %d clusters', garbageCollectedClusters.length)
       }
-    }.bind(this))
+    })
   }
 
   private _logAndEmitError(err: Error, desc?: string) {
@@ -518,13 +511,13 @@ export class ConsumerCluster extends events.EventEmitter {
     this.isShuttingDownFromError = true
 
     // Kill all consumers and then emit an error so that the cluster can be re-spawned
-    this._killAllConsumers(function (killErr?: Error) {
+    this._killAllConsumers((killErr?: Error) => {
       if (killErr) {
         this.logger.error(killErr)
       }
 
       // Emit the original error that started the shutdown process
       this.emit('error', err)
-    }.bind(this))
+    })
   }
 }
