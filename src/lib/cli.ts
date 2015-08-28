@@ -99,7 +99,10 @@ logger.info({options: clusterOpts}, 'Cluster options')
 
 async.auto({
   localDynamo: function (done) {
-    if (! opts.localDynamo) return done()
+    if (! opts.localDynamo) {
+      return done()
+    }
+
     logger.info('Launching local DynamoDB')
 
     var databaseDir = args['local-dynamo-directory']
@@ -137,7 +140,9 @@ async.auto({
     // Local Dynamo writes some stuff to stderr when it's ready
     var finishedStart = false
     proc.stderr.on('data', function () {
-      if (finishedStart) return
+      if (finishedStart) {
+        return
+      }
 
       finishedStart = true
       // little delay just in case
@@ -145,8 +150,12 @@ async.auto({
     })
   },
   localKinesis: function (done) {
-    if (! opts.localKinesis) return done()
-    if (args['local-kinesis-no-start']) return done()
+    if (! opts.localKinesis) {
+      return done()
+    }
+    if (args['local-kinesis-no-start']) {
+      return done()
+    }
 
     var port = args['local-kinesis-port'] || config.localKinesisEndpoint.port
 
@@ -161,19 +170,21 @@ async.auto({
       process.exit(1)
     })
 
+    var timer = setTimeout(function () {
+      done(new Error('Local Kinesis took too long to start'))
+    }, 5000)
+
     var output = ''
     proc.stdout.on('data', function (chunk) {
       output += chunk
-      if (output.indexOf('Listening') === -1) return
+      if (output.indexOf('Listening') === -1) {
+        return
+      }
 
       done()
       done = function () {}
       clearTimeout(timer)
     })
-
-    var timer = setTimeout(function () {
-      done(new Error('Local Kinesis took too long to start'))
-    }, 5000)
   },
   cluster: ['localDynamo', 'localKinesis', function (done) {
     logger.info('Launching cluster')

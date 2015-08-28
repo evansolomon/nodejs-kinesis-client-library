@@ -12,8 +12,12 @@ export class Stream {
 
   public exists (callback) {
     this.describe(function (err) {
-      if (err && err.code === 'ResourceNotFoundException') return callback(null, false)
-      if (err) return callback(err)
+      if (err && err.code === 'ResourceNotFoundException') {
+        return callback(null, false)
+      }
+      if (err) {
+        return callback(err)
+      }
       callback(null, true)
     })
   }
@@ -30,21 +34,35 @@ export class Stream {
       },
 
       isDeleting: ['isActive', function (done) {
-        if (state.isActive) return done()
+        if (state.isActive) {
+          return done()
+        }
+
         _this.isDeleting(function (err, isDeleting) {
           state.isDeleting = isDeleting
           done(err)
         })
       }]
     }, function (err) {
-      if (err) return callback(err)
-      if (state.isActive) return callback()
-      if (state.isDeleting) return callback(new Error('Stream is deleting'))
+      if (err) {
+        return callback(err)
+      }
+
+      if (state.isActive) {
+        return callback()
+      }
+
+      if (state.isDeleting) {
+        return callback(new Error('Stream is deleting'))
+      }
 
       var isActive
       async.doUntil(function (done) {
         _this.isActive(function (err, _isActive) {
-          if (err) return done(err)
+          if (err) {
+            return done(err)
+          }
+
           isActive = _isActive
           done()
         })
@@ -64,7 +82,9 @@ export class Stream {
 
   private hasStatus (status, callback) {
     this.describe(function (err, description) {
-      if (err) return callback(err)
+      if (err) {
+        return callback(err)
+      }
 
       var isActive = description.StreamDescription.StreamStatus === status
       callback(null, isActive)

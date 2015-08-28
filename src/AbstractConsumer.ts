@@ -7,7 +7,6 @@ import bunyan = require('bunyan')
 
 import awsFactory = require('./lib/aws/factory')
 import config = require('./lib/config')
-import kinesis = require('./lib/aws/kinesis')
 
 import lease = require('./lib/models/Lease')
 
@@ -31,7 +30,7 @@ export interface ProcessRecordsCallback {
 }
 
 export interface ConsumerExtension {
-  processResponse?: (request: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback) => void
+  processResponse?: (request: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback)=> void
   processRecords?: (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) => void
   initialize?: (callback: (err?: any) => void) => void
   shutdown?: (callback: (err?: any) => void) => void
@@ -121,7 +120,9 @@ export class AbstractConsumer {
       _this._reserveLease.bind(_this),
       function (done) {
         _this.lease.getCheckpoint(function (err, checkpoint) {
-          if (err) return done(err)
+          if (err) {
+            return done(err)
+          }
 
           _this.log({checkpoint: checkpoint}, 'Got starting checkpoint')
           _this.maxSequenceNumber = checkpoint
@@ -153,7 +154,9 @@ export class AbstractConsumer {
       var gotRecordsAt = Date.now()
 
       _this._getRecords(function (err) {
-        if (err) return done(err)
+        if (err) {
+          return done(err)
+        }
 
         var timeToWait = Math.max(0, timeBetweenReads - (Date.now() - gotRecordsAt))
 
@@ -223,7 +226,9 @@ export class AbstractConsumer {
       if (err && err.code === 'ExpiredIteratorException') {
         _this.log('Shard iterator expired, updating before next getRecords call')
         return _this._updateShardIterator(_this.maxSequenceNumber, function (err) {
-          if (err) return callback(err)
+          if (err) {
+            return callback(err)
+          }
 
           _this._getRecords(callback)
         })
@@ -242,7 +247,9 @@ export class AbstractConsumer {
       _this._resetThroughputErrorDelay()
 
       // We have an error but don't know how to handle it
-      if (err) return callback(err)
+      if (err) {
+        return callback(err)
+      }
 
       // Save this in case we need to checkpoint it in a future request before we get more records
       if (data.NextShardIterator != null) {
@@ -266,12 +273,18 @@ export class AbstractConsumer {
   private _processResponse (data, callback) {
     var _this = this
     this.processResponse(data, function (err, checkpointSequenceNumber) {
-      if (err) return callback(err)
+      if (err) {
+        return callback(err)
+      }
 
       // Don't checkpoint
-      if (! checkpointSequenceNumber) return callback()
+      if (! checkpointSequenceNumber) {
+        return callback()
+      }
       // We haven't actually gotten any records so there is nothing to checkpoint
-      if (! _this.maxSequenceNumber) return callback()
+      if (! _this.maxSequenceNumber) {
+        return callback()
+      }
 
       // Default case to checkpoint the latest sequence number
       if (checkpointSequenceNumber === true) {
@@ -302,7 +315,9 @@ export class AbstractConsumer {
     }
 
     this.kinesis.getShardIterator(params, function (e, data) {
-      if (e) return callback(e)
+      if (e) {
+        return callback(e)
+      }
 
       _this.log(data, 'Updated shard iterator')
       _this.nextShardIterator = data.ShardIterator
@@ -314,7 +329,9 @@ export class AbstractConsumer {
   private _exit (err) {
     var _this = this
 
-    if (this.hasStartedExit) return
+    if (this.hasStartedExit) {
+      return
+    }
     this.hasStartedExit = true
 
     if (err) {
@@ -352,7 +369,9 @@ export class AbstractConsumer {
 
     var methods = ['processRecords', 'initialize', 'shutdown']
     methods.forEach(function (method) {
-      if (! args[method]) return
+      if (! args[method]) {
+        return
+      }
       Ctor.prototype[method] = args[method]
     })
 

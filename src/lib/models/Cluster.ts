@@ -23,11 +23,11 @@ function createModel(tableName: string, dynamodb: AWS.DynamoDB) {
 }
 
 export class Model {
-  public id: string
-  public Cluster: vogels.Model
-
   private static DefaultCapacity = {READ: 10, WRITE: 10}
   private static DB_TYPE = 'cluster'
+
+  public id: string
+  public Cluster: vogels.Model
 
   public constructor (tableName: string, conf: AWS.ClientConfig, dynamoEndpoint?: string) {
     this.id = [os.hostname(), process.pid, Date.now()].join('@')
@@ -58,12 +58,17 @@ export class Model {
       .filter('expiresAt').lt(Date.now())
       .loadAll()
       .exec(function (err, clusters) {
-        if (err) return callback(err)
+        if (err) {
+          return callback(err)
+        }
 
         async.each(clusters.Items, function (cluster, done) {
           _this.Cluster.destroy('cluster', cluster.get('id'), done)
         }, function (err) {
-          if (err) return callback(err)
+          if (err) {
+            return callback(err)
+          }
+
           callback(null, clusters.Items)
         })
       })
@@ -81,11 +86,16 @@ export class Model {
       readCapacity: capacity.read || Model.DefaultCapacity.READ,
       writeCapacity: capacity.write || Model.DefaultCapacity.WRITE
     }, function (err) {
-      if (err) return callback(err)
+      if (err) {
+        return callback(err)
+      }
 
       async.doUntil(function (done) {
         model.describeTable(function (err, data) {
-          if (err) return done(err)
+          if (err) {
+            return done(err)
+          }
+
           tableStatus = data.Table.TableStatus
           done()
         })

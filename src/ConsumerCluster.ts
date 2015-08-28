@@ -88,17 +88,17 @@ export class ConsumerCluster extends events.EventEmitter {
       tableExists: function (done) {
         var tableName = _this.opts.tableName
         var awsConfig = _this.opts.awsConfig
-        var localDynamo = _this.opts.localDynamo
         cluster.Model.tableExists(tableName, awsConfig, _this.getDynamoEndpoint(), done)
       },
 
       createTable: ['tableExists', function (done, data) {
-        if (data.tableExists) return done()
+        if (data.tableExists) {
+          return done()
+        }
 
         var tableName = _this.opts.tableName
         var awsConfig = _this.opts.awsConfig
         var capacity = _this.opts.capacity || {}
-        var localDynamo = !! _this.opts.localDynamo
 
         _this.logger.info({table: tableName}, 'Creating DynamoDB table')
         cluster.Model.createTable(tableName, awsConfig, capacity, _this.getDynamoEndpoint(), done)
@@ -109,17 +109,25 @@ export class ConsumerCluster extends events.EventEmitter {
         var streamModel = new stream.Stream(streamName, _this.kinesis)
 
         streamModel.exists(function (err, exists) {
-          if (err) return done(err)
-          if (exists) return done()
+          if (err) {
+            return done(err)
+          }
+          if (exists) {
+            return done()
+          }
 
           _this.kinesis.createStream({StreamName: streamName, ShardCount: 1}, function (err) {
-            if (err) return done(err)
+            if (err) {
+              return done(err)
+            }
             streamModel.onActive(done)
           })
         })
       }
     }, function (err) {
-      if (err) return _this._logAndEmitError(err, 'Error ensuring Dynamo table exists')
+      if (err) {
+        return _this._logAndEmitError(err, 'Error ensuring Dynamo table exists')
+      }
 
       _this._bindListeners()
       _this._loopReportClusterToNetwork()
@@ -128,7 +136,6 @@ export class ConsumerCluster extends events.EventEmitter {
   }
 
   private getKinesisEndpoint () {
-    var conf = this.opts.awsConfig
     var isLocal = this.opts.localKinesis
     var port = this.opts.localKinesisPort
     var customEndpoint = this.opts.kinesisEndpoint
@@ -147,7 +154,6 @@ export class ConsumerCluster extends events.EventEmitter {
   }
 
   private getDynamoEndpoint () {
-    var conf = this.opts.awsConfig
     var isLocal = this.opts.localDynamo
     var customEndpoint = this.opts.dynamoEndpoint
     var endpoint = null
@@ -190,7 +196,9 @@ export class ConsumerCluster extends events.EventEmitter {
 
     this.on('availableShard', function (shardId, leaseCounter) {
       // Stops accepting consumers, since the cluster will be reset based one an error
-      if (_this.isShuttingDownFromError) return
+      if (_this.isShuttingDownFromError) {
+        return
+      }
 
       _this._spawn(shardId, leaseCounter)
     })
@@ -226,7 +234,9 @@ export class ConsumerCluster extends events.EventEmitter {
     var externalNetwork = this.externalNetwork
 
     var networkKeys = Object.keys(externalNetwork)
-    if (networkKeys.length === 0) return false
+    if (networkKeys.length === 0) {
+      return false
+    }
 
     var lowestInOutterNetwork = networkKeys.reduce(function (memo, key) {
       var count = externalNetwork[key]
@@ -249,7 +259,9 @@ export class ConsumerCluster extends events.EventEmitter {
     async.parallel({
       allShardIds: function (done) {
         kinesis.listShards(_this.kinesis, _this.opts.streamName, function (err, shards) {
-          if (err) return done(err)
+          if (err) {
+            return done(err)
+          }
 
           var shardIds = _.pluck(shards, 'ShardId')
           _asyncResults.allShardIds = shardIds
@@ -259,9 +271,10 @@ export class ConsumerCluster extends events.EventEmitter {
       leases: function (done) {
         var tableName = _this.opts.tableName
         var awsConfig = _this.opts.awsConfig
-        var localDynamo = !! _this.opts.localDynamo
         lease.Model.fetchAll(tableName, awsConfig, _this.getDynamoEndpoint(), function (err, leases) {
-          if (err) return done(err)
+          if (err) {
+            return done(err)
+          }
 
           _asyncResults.leases = leases
           done()
@@ -301,8 +314,12 @@ export class ConsumerCluster extends events.EventEmitter {
       var currentLease
       for (var i = 0; i < leaseItems.length; i++) {
         currentLease = leaseItems[i]
-        if (currentLease.get('expiresAt') > Date.now()) continue
-        if (currentLease.get('isFinished')) continue
+        if (currentLease.get('expiresAt') > Date.now()) {
+          continue
+        }
+        if (currentLease.get('isFinished')) {
+          continue
+        }
 
         var shardId = currentLease.get('id')
         var leaseCounter = currentLease.get('leaseCounter')
@@ -367,10 +384,21 @@ export class ConsumerCluster extends events.EventEmitter {
 
     var callbackWasCalled = false
     var wrappedCallback = function (err: any) {
-      if (callbackWasCalled) return
+      if (callbackWasCalled) {
+        return
+      }
       callbackWasCalled = true
       callback(err)
     }
+
+    // Force kill the consumer in 40 seconds, giving enough time for the consumer's shutdown
+    // process to finish
+    var timer = setTimeout(function () {
+      if (this.consumers[id]) {
+        this.consumers[id].kill()
+      }
+      wrappedCallback(new Error('Consumer did not exit in time'))
+    }.bind(this), 40000)
 
     this.consumers[id].once('exit', function (code) {
       clearTimeout(timer)
@@ -382,15 +410,6 @@ export class ConsumerCluster extends events.EventEmitter {
     })
 
     this.consumers[id].send(config.shutdownMessage)
-
-    // Force kill the consumer in 40 seconds, giving enough time for the consumer's shutdown
-    // process to finish
-    var timer = setTimeout(function () {
-      if (this.consumers[id]) {
-        this.consumers[id].kill()
-      }
-      wrappedCallback(new Error('Consumer did not exit in time'))
-    }.bind(this), 40000)
   }
 
   private _killAllConsumers (callback: (err: any) => void) {
@@ -405,7 +424,9 @@ export class ConsumerCluster extends events.EventEmitter {
 
     function fetchThenWait(done) {
       _this._fetchExternalNetwork(function (err) {
-        if (err) return done(err)
+        if (err) {
+          return done(err)
+        }
         setTimeout(done, 5000)
       })
     }
@@ -422,7 +443,9 @@ export class ConsumerCluster extends events.EventEmitter {
     var _this = this
 
     this.cluster.fetchAll(function (err, clusters) {
-      if (err) return callback(err)
+      if (err) {
+        return callback(err)
+      }
 
       _this.externalNetwork = clusters.Items.filter(function (cluster) {
         return cluster.get('id') !== _this.cluster.id
@@ -443,7 +466,10 @@ export class ConsumerCluster extends events.EventEmitter {
     this.logger.info('Starting report cluster loop')
     function reportThenWait(done) {
       _this._reportClusterToNetwork(function (err) {
-        if (err) return done(err)
+        if (err) {
+          return done(err)
+        }
+
         setTimeout(done, 1000)
       })
     }
@@ -463,7 +489,9 @@ export class ConsumerCluster extends events.EventEmitter {
 
   // Garbage collect expired clusters from the network.
   private _garbageCollectClusters () {
-    if (Date.now() < (this.lastGarbageCollectedAt + (1000 * 60))) return
+    if (Date.now() < (this.lastGarbageCollectedAt + (1000 * 60))) {
+      return
+    }
 
     this.lastGarbageCollectedAt = Date.now()
     this.cluster.garbageCollect(function (err, garbageCollectedClusters) {
@@ -478,12 +506,15 @@ export class ConsumerCluster extends events.EventEmitter {
     }.bind(this))
   }
 
-  private _logAndEmitError = function (err: Error, desc?: string) {
+  private _logAndEmitError(err: Error, desc?: string) {
     this.logger.error(desc)
     this.logger.error(err)
 
     // Only start the shutdown process once
-    if (this.isShuttingDownFromError) return
+    if (this.isShuttingDownFromError) {
+      return
+    }
+
     this.isShuttingDownFromError = true
 
     // Kill all consumers and then emit an error so that the cluster can be re-spawned

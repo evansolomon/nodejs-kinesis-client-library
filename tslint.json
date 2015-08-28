@@ -1,0 +1,37 @@
+{
+  "rules": {
+    "class-name": true,
+    "comment-format": [
+      true,
+      "check-space"
+    ],
+    "curly": true,
+    "eofline": true,
+    "indent": [true, "spaces"],
+    "label-position": true,
+    "label-undefined": true,
+    "member-access": true,
+    "member-ordering": [
+      true,
+      "variables-before-functions"
+    ],
+    "no-arg": true,
+    "no-duplicate-key": true,
+    "no-duplicate-variable": true,
+    "no-string-literal": true,
+    "no-switch-case-fall-through": true,
+    "no-trailing-whitespace": true,
+    "no-unreachable": true,
+    "no-unused-variable": true,
+    "no-use-before-declare": true,
+    "one-line": [
+      true,
+      "check-catch",
+      "check-else",
+      "check-whitespace"
+    ],
+    "quotemark": [true, "single"],
+    "radix": true,
+    "semicolon": false
+  }
+}

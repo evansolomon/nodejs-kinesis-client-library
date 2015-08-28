@@ -42,7 +42,9 @@ export class Model {
       ConsistentRead: true,
       AttributesToGet: ['checkpointedSequence']
     }, function (err, lease) {
-      if (err) return callback(err)
+      if (err) {
+        return callback(err)
+      }
 
       callback(null, lease.get('checkpointedSequence'))
     })

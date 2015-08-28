@@ -1,8 +1,8 @@
 import async = require('async')
 import AWS = require('aws-sdk')
 
-export interface listShardsCallback {(err: any, data?: AWS.kinesis.Shard[]): void}
-export var listShards = function (client: AWS.Kinesis, stream: string, callback: listShardsCallback) {
+export interface ListShardsCallback {(err: any, data?: AWS.kinesis.Shard[]): void}
+export var listShards = function (client: AWS.Kinesis, stream: string, callback: ListShardsCallback) {
   var shards = []
   var foundAllShards = false
   var startShardId
@@ -14,7 +14,9 @@ export var listShards = function (client: AWS.Kinesis, stream: string, callback:
     }
 
     client.describeStream(params, function (err, data) {
-      if (err) return done(err)
+      if (err) {
+        return done(err)
+      }
 
       if (! data.StreamDescription.HasMoreShards) {
         foundAllShards = true
@@ -33,7 +35,9 @@ export var listShards = function (client: AWS.Kinesis, stream: string, callback:
   }
 
   function finish(err) {
-    if (err) return callback(err)
+    if (err) {
+      return callback(err)
+    }
     callback(null, shards)
   }
 
