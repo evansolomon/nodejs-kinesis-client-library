@@ -40,6 +40,7 @@ export interface ConsumerExtension {
 // Stream consumer, meant to be extended.
 export class AbstractConsumer {
   public static DEFAULT_SHARD_ITERATOR_TYPE = 'TRIM_HORIZON'
+  public static DEFAULT_TIME_BETWEEN_READS = 1000
   public static ShardIteratorTypes = {
     AT_SEQUENCE_NUMBER: 'AT_SEQUENCE_NUMBER',
     AFTER_SEQUENCE_NUMBER: 'AFTER_SEQUENCE_NUMBER',
@@ -53,6 +54,7 @@ export class AbstractConsumer {
   private kinesis: AWS.Kinesis
   private nextShardIterator: string
   private hasStartedExit = false
+  private throughputErrorDelay: number
 
   // Called before record processing starts. This method may be implemented by the child.
   // If it is implemented, the callback must be called for processing to begin.
@@ -79,6 +81,11 @@ export class AbstractConsumer {
 
   constructor(opts) {
     this.opts = opts
+
+    if (! this.opts.timeBetweenReads) {
+      this.opts.timeBetweenReads = AbstractConsumer.DEFAULT_TIME_BETWEEN_READS
+    }
+    this._resetThroughputErrorDelay()
 
     if (! this.opts.startingIteratorType) {
       this.opts.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
@@ -139,7 +146,7 @@ export class AbstractConsumer {
   // Continuously fetch records from the stream.
   private _loopGetRecords () {
     var _this = this
-    var timeBetweenReads = this.opts.timeBetweenReads || 1000
+    var timeBetweenReads = this.opts.timeBetweenReads
 
     this.log('Starting getRecords loop')
 
@@ -224,11 +231,16 @@ export class AbstractConsumer {
       }
 
       if (err && err.code === 'ProvisionedThroughputExceededException') {
-        _this.log('Provisioned throughput exceeded, pausing before next getRecords call')
+        _this.log('Provisioned throughput exceeded, pausing before next getRecords call', {
+          delay: _this.throughputErrorDelay
+        })
         return setTimeout(function () {
+          _this._increaseThroughputErrorDelay()
           _this._getRecords(callback)
-        }, 5000)
+        }, _this.throughputErrorDelay)
       }
+
+      _this._resetThroughputErrorDelay()
 
       // We have an error but don't know how to handle it
       if (err) return callback(err)
@@ -321,6 +333,14 @@ export class AbstractConsumer {
       var exitCode = err == null ? 0 : 1
       process.exit(exitCode)
     })
+  }
+
+  private _increaseThroughputErrorDelay() {
+    this.throughputErrorDelay = this.throughputErrorDelay * 2
+  }
+
+  private _resetThroughputErrorDelay() {
+    this.throughputErrorDelay = this.opts.timeBetweenReads
   }
 
   // Create a child consumer.
