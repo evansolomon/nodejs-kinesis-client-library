@@ -1,4 +1,4 @@
-var config = {
+const config = {
   shutdownMessage: 'shutdown',
   localDynamoDBEndpoint: {
     protocol: 'http',
