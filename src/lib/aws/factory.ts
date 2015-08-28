@@ -1,7 +1,7 @@
 import * as AWS from 'aws-sdk'
 
-let kinesis = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kinesis {
-  var instance =  new AWS.Kinesis(awsConfig || {})
+const kinesis = (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kinesis => {
+  const instance = new AWS.Kinesis(awsConfig || {})
   if (endpoint) {
     instance.setEndpoint(endpoint)
   }
@@ -9,8 +9,8 @@ let kinesis = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kine
   return instance
 }
 
-let dynamo = function (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.DynamoDB {
-  var instance =  new AWS.DynamoDB(awsConfig || {})
+const dynamo = (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.DynamoDB => {
+  const instance = new AWS.DynamoDB(awsConfig || {})
   if (endpoint) {
     instance.setEndpoint(endpoint)
   }

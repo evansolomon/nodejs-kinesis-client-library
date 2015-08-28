@@ -2,13 +2,13 @@ import async = require('async')
 import AWS = require('aws-sdk')
 
 export interface ListShardsCallback {(err: any, data?: AWS.kinesis.Shard[]): void}
-let listShards = function (client: AWS.Kinesis, stream: string, callback: ListShardsCallback) {
-  var shards = []
-  var foundAllShards = false
+const listShards = (client: AWS.Kinesis, stream: string, callback: ListShardsCallback) => {
+  let shards = []
+  let foundAllShards = false
   var startShardId
 
   function next(done) {
-    var params = {
+    const params = {
       StreamName: stream,
       ExclusiveStartShardId: startShardId
     }
@@ -22,7 +22,7 @@ let listShards = function (client: AWS.Kinesis, stream: string, callback: ListSh
         foundAllShards = true
       }
 
-      var lastShard = data.StreamDescription.Shards[data.StreamDescription.Shards.length - 1]
+      const lastShard = data.StreamDescription.Shards[data.StreamDescription.Shards.length - 1]
       startShardId = lastShard.ShardId
 
       shards = shards.concat(data.StreamDescription.Shards)
@@ -30,11 +30,11 @@ let listShards = function (client: AWS.Kinesis, stream: string, callback: ListSh
     })
   }
 
-  function test() {
+  const test = () => {
     return !! foundAllShards
   }
 
-  function finish(err) {
+  const finish = err => {
     if (err) {
       return callback(err)
     }
