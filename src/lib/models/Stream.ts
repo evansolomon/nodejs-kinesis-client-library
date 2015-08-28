@@ -23,27 +23,26 @@ export class Stream {
   }
 
   public onActive (callback) {
-    var _this = this
-    var state = {isActive: false, isDeleting: false}
+    let state = {isActive: false, isDeleting: false}
     async.auto({
-      isActive: function (done) {
-        _this.isActive(function (err, isActive) {
+      isActive: done => {
+        this.isActive((err, isActive) => {
           state.isActive = isActive
           done(err)
         })
       },
 
-      isDeleting: ['isActive', function (done) {
+      isDeleting: ['isActive', done => {
         if (state.isActive) {
           return done()
         }
 
-        _this.isDeleting(function (err, isDeleting) {
+        this.isDeleting(function (err, isDeleting) {
           state.isDeleting = isDeleting
           done(err)
         })
       }]
-    }, function (err) {
+    }, err => {
       if (err) {
         return callback(err)
       }
@@ -56,9 +55,9 @@ export class Stream {
         return callback(new Error('Stream is deleting'))
       }
 
-      var isActive
-      async.doUntil(function (done) {
-        _this.isActive(function (err, _isActive) {
+      let isActive
+      async.doUntil(done => {
+        this.isActive((err, _isActive) => {
           if (err) {
             return done(err)
           }
@@ -66,7 +65,7 @@ export class Stream {
           isActive = _isActive
           done()
         })
-      }, function () {
+      }, () => {
         return isActive
       }, callback)
     })
@@ -86,7 +85,7 @@ export class Stream {
         return callback(err)
       }
 
-      var isActive = description.StreamDescription.StreamStatus === status
+      const isActive = description.StreamDescription.StreamStatus === status
       callback(null, isActive)
     })
   }

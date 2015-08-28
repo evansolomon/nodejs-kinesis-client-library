@@ -4,8 +4,8 @@ import * as _ from 'underscore'
 
 import * as awsFactory from '../aws/factory'
 
-function createModel(tableName: string, dynamodb: AWS.DynamoDB) {
-  var Lease = vogels.define('Lease', function (schema) {
+const createModel = (tableName: string, dynamodb: AWS.DynamoDB) => {
+  const Lease = vogels.define('Lease', schema => {
     schema.String('type', {hashKey: true})
     schema.String('id', {rangeKey: true})
     schema.Number('leaseCounter').required()
@@ -30,7 +30,7 @@ export class Model {
   private static DB_TYPE = 'lease'
 
   constructor(shardId: string, counter: number, table: string, conf: AWS.ClientConfig, dynamoEndpoint: string) {
-    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
 
     this.Lease = createModel(table, dynamodb)
     this.shardId = shardId
@@ -41,7 +41,7 @@ export class Model {
     this.Lease.get(Model.DB_TYPE, this.shardId, {
       ConsistentRead: true,
       AttributesToGet: ['checkpointedSequence']
-    }, function (err, lease) {
+    }, (err, lease) => {
       if (err) {
         return callback(err)
       }
@@ -51,26 +51,26 @@ export class Model {
   }
 
   private _update (properties: Object, callback: (err: any) => void) {
-    var atts = _.extend({
+    const atts = _.extend({
       type: Model.DB_TYPE,
       id: this.shardId,
       leaseCounter: {$add: 1},
       expiresAt: Date.now() + (1000 * 15)
     }, properties)
 
-    var expected = {
+    const expected = {
       expected: {leaseCounter: this.expectedLeaseCounter}
     }
 
     this.expectedLeaseCounter = (this.expectedLeaseCounter || 0) + 1
 
-    this.Lease.update(atts, expected, function (err, record) {
+    this.Lease.update(atts, expected, (err, record) => {
       if (! err) {
         this.checkpointedSequence = record.get('checkpointedSequence')
       }
 
-      callback.apply(null, arguments)
-    }.bind(this))
+      callback(err)
+    })
   }
 
   public reserve (callback: (err: any) => void) {
@@ -93,7 +93,7 @@ export class Model {
   public static fetchAll (tableName: string, conf: AWS.ClientConfig, dynamoEndpoint: string,
                           callback: (err: any, data: vogels.Queries.Query.Result) => void
   ) {
-    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
     createModel(tableName, dynamodb).query(Model.DB_TYPE)
       .loadAll()
       .exec(callback)

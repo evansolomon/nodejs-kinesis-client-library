@@ -6,8 +6,8 @@ import * as vogels from 'vogels'
 import * as AWS from 'aws-sdk'
 import * as awsFactory from '../aws/factory'
 
-function createModel(tableName: string, dynamodb: AWS.DynamoDB) {
-  var Cluster = vogels.define('Cluster', function (schema) {
+const createModel = (tableName: string, dynamodb: AWS.DynamoDB) => {
+  const Cluster = vogels.define('Cluster', schema => {
     schema.String('type', {hashKey: true})
     schema.String('id', {rangeKey: true})
     schema.Number('activeConsumers').required()
@@ -32,7 +32,7 @@ export class Model {
   public constructor (tableName: string, conf: AWS.ClientConfig, dynamoEndpoint?: string) {
     this.id = [os.hostname(), process.pid, Date.now()].join('@')
 
-    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
     this.Cluster = createModel(tableName, dynamodb)
   }
 
@@ -53,18 +53,17 @@ export class Model {
   }
 
   public garbageCollect (callback: (err: any, data?: vogels.Queries.Item[]) => void) {
-    var _this = this
     this.Cluster.query(Model.DB_TYPE)
       .filter('expiresAt').lt(Date.now())
       .loadAll()
-      .exec(function (err, clusters) {
+      .exec((err, clusters) => {
         if (err) {
           return callback(err)
         }
 
-        async.each(clusters.Items, function (cluster, done) {
-          _this.Cluster.destroy('cluster', cluster.get('id'), done)
-        }, function (err) {
+        async.each(clusters.Items, (cluster, done) => {
+          this.Cluster.destroy('cluster', cluster.get('id'), done)
+        }, err => {
           if (err) {
             return callback(err)
           }
@@ -77,20 +76,20 @@ export class Model {
   public static createTable (name: string, conf: AWS.ClientConfig, capacity: Capacity,
     dynamoEndpoint: string, callback: (e: any) => void)
   {
-    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
 
-    var model = createModel(name, dynamodb)
-    var tableStatus
+    const model = createModel(name, dynamodb)
+    let tableStatus
 
     model.createTable({
       readCapacity: capacity.read || Model.DefaultCapacity.READ,
       writeCapacity: capacity.write || Model.DefaultCapacity.WRITE
-    }, function (err) {
+    }, err => {
       if (err) {
         return callback(err)
       }
 
-      async.doUntil(function (done) {
+      async.doUntil(done => {
         model.describeTable(function (err, data) {
           if (err) {
             return done(err)
@@ -99,7 +98,7 @@ export class Model {
           tableStatus = data.Table.TableStatus
           done()
         })
-      }, function () {
+      }, () => {
         return tableStatus === 'ACTIVE'
       }, callback)
     })
@@ -108,9 +107,9 @@ export class Model {
   public static tableExists (name: string, conf: AWS.ClientConfig, dynamoEndpoint: string,
     callback: (err: any, data?: Boolean) => void)
   {
-    var dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
 
-    createModel(name, dynamodb).describeTable(function (err) {
+    createModel(name, dynamodb).describeTable(err => {
       if (err && err.code === 'ResourceNotFoundException') {
         callback(null, false)
       } else if (err) {
