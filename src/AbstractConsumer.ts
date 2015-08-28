@@ -54,6 +54,7 @@ export class AbstractConsumer {
   private kinesis: AWS.Kinesis
   private nextShardIterator: string
   private hasStartedExit = false
+  private timeBetweenReads: number
   private throughputErrorDelay: number
 
   // Called before record processing starts. This method may be implemented by the child.
@@ -82,9 +83,7 @@ export class AbstractConsumer {
   constructor(opts) {
     this.opts = opts
 
-    if (! this.opts.timeBetweenReads) {
-      this.opts.timeBetweenReads = AbstractConsumer.DEFAULT_TIME_BETWEEN_READS
-    }
+    this.timeBetweenReads = opts.timeBetweenReads || AbstractConsumer.DEFAULT_TIME_BETWEEN_READS
     this._resetThroughputErrorDelay()
 
     if (! this.opts.startingIteratorType) {
@@ -146,7 +145,7 @@ export class AbstractConsumer {
   // Continuously fetch records from the stream.
   private _loopGetRecords () {
     var _this = this
-    var timeBetweenReads = this.opts.timeBetweenReads
+    var timeBetweenReads = this.timeBetweenReads
 
     this.log('Starting getRecords loop')
 
@@ -340,7 +339,7 @@ export class AbstractConsumer {
   }
 
   private _resetThroughputErrorDelay() {
-    this.throughputErrorDelay = this.opts.timeBetweenReads
+    this.throughputErrorDelay = this.timeBetweenReads
   }
 
   // Create a child consumer.
