@@ -70,7 +70,7 @@ if (args.help) {
   process.exit()
 }
 
-const consumer = path.resolve(process.env.PWD, args.consumer || '')
+const consumer = path.resolve(process.cwd(), args.consumer || '')
 const opts = {
   tableName: args.table,
   streamName: args.stream,
