@@ -1,13 +1,11 @@
-import * as util from 'util'
+import {series, forever} from 'async'
+import {ClientConfig, Kinesis, kinesis} from 'aws-sdk'
+import {Logger, createLogger} from 'bunyan'
+import {pluck} from 'underscore'
 
-import * as _ from 'underscore'
-import * as async from 'async'
-import * as AWS from 'aws-sdk'
-import * as bunyan from 'bunyan'
-
-import * as awsFactory from './lib/aws/factory'
+import {createKinesisClient} from './lib/aws/factory'
 import config from './lib/config'
-import * as lease from './lib/models/Lease'
+import {Lease} from './lib/models/Lease'
 
 
 interface AbstractConsumerOpts {
@@ -15,7 +13,7 @@ interface AbstractConsumerOpts {
   shardId: string
   leaseCounter?: number
   tableName: string
-  awsConfig: AWS.ClientConfig
+  awsConfig: ClientConfig
   startingIteratorType?: string
   dynamoEndpoint?: string
   kinesisEndpoint?: string
@@ -25,31 +23,32 @@ interface AbstractConsumerOpts {
 }
 
 export interface ProcessRecordsCallback {
-  (err: any, checkpointSequenceNumber?: Boolean|string): void;
+  (err: any, checkpointSequenceNumber?: Boolean | string): void;
 }
 
 export interface ConsumerExtension {
-  processResponse?: (request: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback)=> void
-  processRecords?: (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) => void
+  processResponse?: (request: kinesis.GetRecordsResult, callback: ProcessRecordsCallback) => void
+  processRecords?: (records: kinesis.Record[], callback: ProcessRecordsCallback) => void
   initialize?: (callback: (err?: any) => void) => void
   shutdown?: (callback: (err?: any) => void) => void
 }
 
 // Stream consumer, meant to be extended.
 export class AbstractConsumer {
+  public static ABSTRACT_METHODS = ['processRecords', 'initialize', 'shutdown']
   public static DEFAULT_SHARD_ITERATOR_TYPE = 'TRIM_HORIZON'
   public static DEFAULT_TIME_BETWEEN_READS = 1000
   public static ShardIteratorTypes = {
     AT_SEQUENCE_NUMBER: 'AT_SEQUENCE_NUMBER',
     AFTER_SEQUENCE_NUMBER: 'AFTER_SEQUENCE_NUMBER',
     TRIM_HORIZON: 'TRIM_HORIZON',
-    LATEST: 'LATEST'
+    LATEST: 'LATEST',
   }
-  public logger: bunyan.Logger
+  public logger: Logger
   private opts: AbstractConsumerOpts
-  private lease: lease.Model
+  private lease: Lease
   private maxSequenceNumber: string
-  private kinesis: AWS.Kinesis
+  private kinesis: Kinesis
   private nextShardIterator: string
   private hasStartedExit = false
   private timeBetweenReads: number
@@ -57,23 +56,23 @@ export class AbstractConsumer {
 
   // Called before record processing starts. This method may be implemented by the child.
   // If it is implemented, the callback must be called for processing to begin.
-  public initialize (callback: (err?: Error) => void) {
+  public initialize(callback: (err?: Error) => void) {
     this.log('No initialize method defined, skipping')
     callback()
   }
 
   // Process a batch of records. This method, or processResponse, must be implemented by the child.
-  public processRecords (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) {
+  public processRecords(records: kinesis.Record[], callback: ProcessRecordsCallback) {
     throw new Error('processRecords must be defined by the consumer class')
   }
 
   // Process raw kinesis response.  Override it to get access to the MillisBehindLatest field.
-  public processResponse (response: AWS.kinesis.GetRecordsResult, callback: ProcessRecordsCallback) {
+  public processResponse(response: kinesis.GetRecordsResult, callback: ProcessRecordsCallback) {
     this.processRecords(response.Records, callback)
   }
 
   // Called before a consumer exits. This method may be implemented by the child.
-  public shutdown (callback: (err?: Error) => void) {
+  public shutdown(callback: (err?: Error) => void) {
     this.log('No shutdown method defined, skipping')
     callback()
   }
@@ -82,75 +81,75 @@ export class AbstractConsumer {
     this.opts = opts
 
     this.timeBetweenReads = opts.timeBetweenReads || AbstractConsumer.DEFAULT_TIME_BETWEEN_READS
-    this._resetThroughputErrorDelay()
+    this.resetThroughputErrorDelay()
 
-    if (! this.opts.startingIteratorType) {
+    if (!this.opts.startingIteratorType) {
       this.opts.startingIteratorType = AbstractConsumer.DEFAULT_SHARD_ITERATOR_TYPE
     }
 
-    this.kinesis = awsFactory.kinesis(this.opts.awsConfig, this.opts.kinesisEndpoint)
+    this.kinesis = createKinesisClient(this.opts.awsConfig, this.opts.kinesisEndpoint)
 
     process.on('message', msg => {
       if (msg === config.shutdownMessage) {
-        this._exit(null)
+        this.exit(null)
       }
     })
 
-    this.logger = bunyan.createLogger({
+    this.logger = createLogger({
       name: 'KinesisConsumer',
       level: opts.logLevel,
       streamName: opts.streamName,
-      shardId: opts.shardId
+      shardId: opts.shardId,
     })
 
-    this._init()
+    this.init()
 
-    if (! this.opts.shardId) {
-      this._exit(new Error('Cannot spawn a consumer without a shard ID'))
+    if (!this.opts.shardId) {
+      this.exit(new Error('Cannot spawn a consumer without a shard ID'))
     }
   }
 
-  private _init () {
-    this._setupLease()
+  private init() {
+    this.setupLease()
 
-    async.series([
+    series([
       this.initialize.bind(this),
-      this._reserveLease.bind(this),
+      this.reserveLease.bind(this),
       done => {
         this.lease.getCheckpoint((err, checkpoint) => {
           if (err) {
             return done(err)
           }
 
-          this.log({checkpoint: checkpoint}, 'Got starting checkpoint')
+          this.log({ checkpoint: checkpoint }, 'Got starting checkpoint')
           this.maxSequenceNumber = checkpoint
-          this._updateShardIterator(checkpoint, done)
+          this.updateShardIterator(checkpoint, done)
         })
-      }
+      },
     ], err => {
       if (err) {
-        return this._exit(err)
+        return this.exit(err)
       }
 
-      this._loopGetRecords()
-      this._loopReserveLease()
+      this.loopGetRecords()
+      this.loopReserveLease()
     })
   }
 
-  public log (...args: any[]) {
+  public log(...args: any[]) {
     this.logger.info.apply(this.logger, args)
   }
 
   // Continuously fetch records from the stream.
-  private _loopGetRecords () {
+  private loopGetRecords() {
     const timeBetweenReads = this.timeBetweenReads
 
     this.log('Starting getRecords loop')
 
-    async.forever(done => {
+    forever(done => {
       const gotRecordsAt = Date.now()
 
-      this._getRecords(err => {
+      this.getRecords(err => {
         if (err) {
           return done(err)
         }
@@ -164,77 +163,77 @@ export class AbstractConsumer {
         }
       })
     }, err => {
-      this._exit(err)
+      this.exit(err)
     })
   }
 
   // Continuously update this consumer's lease reservation.
-  private _loopReserveLease () {
+  private loopReserveLease() {
     this.log('Starting reserveLease loop')
 
-    async.forever(done => {
-      setTimeout(this._reserveLease.bind(this, done), 5000)
+    forever(done => {
+      setTimeout(this.reserveLease.bind(this, done), 5000)
     }, err => {
-      this._exit(err)
+      this.exit(err)
     })
   }
 
   // Setup the initial lease reservation state.
-  private _setupLease () {
+  private setupLease() {
     const id = this.opts.shardId
     const leaseCounter = this.opts.leaseCounter || null
     const tableName = this.opts.tableName
     const awsConfig = this.opts.awsConfig
 
-    this.log({leaseCounter: leaseCounter, tableName: tableName}, 'Setting up lease')
+    this.log({ leaseCounter: leaseCounter, tableName: tableName }, 'Setting up lease')
 
-    this.lease = new lease.Model(id, leaseCounter, tableName, awsConfig, this.opts.dynamoEndpoint)
+    this.lease = new Lease(id, leaseCounter, tableName, awsConfig, this.opts.dynamoEndpoint)
   }
 
   // Update the lease in the network database.
-  private _reserveLease (callback) {
+  private reserveLease(callback) {
     this.logger.debug('Reserving lease')
     this.lease.reserve(callback)
   }
 
   // Mark the consumer's shard as finished, then exit.
-  private _markFinished () {
+  private markFinished() {
     this.log('Marking shard as finished')
 
-    this.lease.markFinished(err => this._exit(err))
+    this.lease.markFinished(err => this.exit(err))
   }
 
   // Get records from the stream and wait for them to be processed.
-  private _getRecords (callback) {
-    let getRecordsParams = {ShardIterator: this.nextShardIterator}
+  private getRecords(callback) {
+    let getRecordsParams = <kinesis.GetRecordsRequest>{ ShardIterator: this.nextShardIterator }
     if (this.opts.numRecords && this.opts.numRecords > 0) {
-      getRecordsParams = {ShardIterator: this.nextShardIterator, Limit: this.opts.numRecords}
+      getRecordsParams = { ShardIterator: this.nextShardIterator, Limit: this.opts.numRecords }
     }
 
     this.kinesis.getRecords(getRecordsParams, (err, data) => {
       // Handle known errors
       if (err && err.code === 'ExpiredIteratorException') {
         this.log('Shard iterator expired, updating before next getRecords call')
-        return this._updateShardIterator(this.maxSequenceNumber, err => {
+        return this.updateShardIterator(this.maxSequenceNumber, err => {
           if (err) {
             return callback(err)
           }
 
-          this._getRecords(callback)
+          this.getRecords(callback)
         })
       }
 
       if (err && err.code === 'ProvisionedThroughputExceededException') {
         this.log('Provisioned throughput exceeded, pausing before next getRecords call', {
-          delay: this.throughputErrorDelay
+          delay: this.throughputErrorDelay,
         })
         return setTimeout(() => {
-          this._increaseThroughputErrorDelay()
-          this._getRecords(callback)
+          this.increaseThroughputErrorDelay()
+          this.getRecords(callback)
         }, this.throughputErrorDelay)
       }
 
-      this._resetThroughputErrorDelay()
+      this.resetThroughputErrorDelay()
 
       // We have an error but don't know how to handle it
       if (err) {
@@ -247,31 +246,31 @@ export class AbstractConsumer {
       }
 
       // We have processed all the data from a closed stream
-      if (data.NextShardIterator == null && (! data.Records || data.Records.length === 0)) {
-        this.log({data: data}, 'Marking shard as finished')
-        return this._markFinished()
+      if (data.NextShardIterator == null && (!data.Records || data.Records.length === 0)) {
+        this.log({ data: data }, 'Marking shard as finished')
+        return this.markFinished()
       }
 
-      const lastSequenceNumber = _.pluck(data.Records, 'SequenceNumber').pop()
+      const lastSequenceNumber = pluck(data.Records, 'SequenceNumber').pop()
       this.maxSequenceNumber = lastSequenceNumber || this.maxSequenceNumber
 
-      this._processResponse(data, callback)
+      this.wrappedProcessResponse(data, callback)
     })
   }
 
   // Wrap the child's processResponse method to handle checkpointing.
-  private _processResponse (data, callback) {
+  private wrappedProcessResponse(data, callback) {
     this.processResponse(data, (err, checkpointSequenceNumber) => {
       if (err) {
         return callback(err)
       }
 
       // Don't checkpoint
-      if (! checkpointSequenceNumber) {
+      if (!checkpointSequenceNumber) {
         return callback()
       }
       // We haven't actually gotten any records so there is nothing to checkpoint
-      if (! this.maxSequenceNumber) {
+      if (!this.maxSequenceNumber) {
         return callback()
       }
 
@@ -280,12 +279,12 @@ export class AbstractConsumer {
         checkpointSequenceNumber = this.maxSequenceNumber
       }
 
-      this.lease.checkpoint(<string> checkpointSequenceNumber, callback)
+      this.lease.checkpoint(<string>checkpointSequenceNumber, callback)
     })
   }
 
   // Get a new shard iterator from Kinesis.
-  private _updateShardIterator (sequenceNumber, callback) {
+  private updateShardIterator(sequenceNumber, callback) {
     let type
     if (sequenceNumber) {
       type = AbstractConsumer.ShardIteratorTypes.AFTER_SEQUENCE_NUMBER
@@ -293,13 +292,13 @@ export class AbstractConsumer {
       type = this.opts.startingIteratorType
     }
 
-    this.log({iteratorType: type, sequenceNumber: sequenceNumber}, 'Updating shard iterator')
+    this.log({ iteratorType: type, sequenceNumber: sequenceNumber }, 'Updating shard iterator')
 
     const params = {
       StreamName: this.opts.streamName,
       ShardId: this.opts.shardId,
       ShardIteratorType: type,
-      StartingSequenceNumber: sequenceNumber
+      StartingSequenceNumber: sequenceNumber,
     }
 
     this.kinesis.getShardIterator(params, (e, data) => {
@@ -314,7 +313,7 @@ export class AbstractConsumer {
   }
 
   // Exit the consumer with its optional shutdown process.
-  private _exit (err) {
+  private exit(err) {
     if (this.hasStartedExit) {
       return
     }
@@ -338,30 +337,27 @@ export class AbstractConsumer {
     })
   }
 
-  private _increaseThroughputErrorDelay() {
+  private increaseThroughputErrorDelay() {
     this.throughputErrorDelay = this.throughputErrorDelay * 2
   }
 
-  private _resetThroughputErrorDelay() {
+  private resetThroughputErrorDelay() {
     this.throughputErrorDelay = this.timeBetweenReads
   }
 
   // Create a child consumer.
-  public static extend (args: ConsumerExtension) {
+  public static extend(args: ConsumerExtension) {
     const opts = JSON.parse(process.env.CONSUMER_INSTANCE_OPTS)
-    function Ctor() {
-      AbstractConsumer.call(this, opts)
-    }
-    util.inherits(Ctor, AbstractConsumer)
+    class Consumer extends AbstractConsumer {
+      constructor() {
+        super(opts)
 
-    const methods = ['processRecords', 'initialize', 'shutdown']
-    methods.forEach(function (method) {
-      if (! args[method]) {
-        return
+        AbstractConsumer.ABSTRACT_METHODS
+          .filter(method => args[method])
+          .forEach(method => this[method] = args[method])
       }
-      Ctor.prototype[method] = args[method]
-    })
+    }
 
-    new Ctor()
+    new Consumer()
   }
 }

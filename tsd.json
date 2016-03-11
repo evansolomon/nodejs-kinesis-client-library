@@ -2,8 +2,8 @@
   "version": "v4",
   "repo": "evansolomon/DefinitelyTyped",
   "ref": "master",
-  "path": "build/.typings",
-  "bundle": "build/.typings/tsd.d.ts",
+  "path": "src/typings",
+  "bundle": "src/typings/tsd.d.ts",
   "installed": {
     "aws-sdk/aws-sdk.d.ts": {
       "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
@@ -18,7 +18,7 @@
       "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
     },
     "bunyan/bunyan.d.ts": {
-      "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"
+      "commit": "3e82b5c46b215cd737e2ff0f377d8ff5d83e20a6"
     },
     "minimist/minimist.d.ts": {
       "commit": "1cdb0112fcab7ad7d85a5feebd9f02dcf3dccc32"

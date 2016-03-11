@@ -1,59 +1,59 @@
-import * as os from 'os'
+import {hostname} from 'os'
 
-import * as async from 'async'
-import * as vogels from 'vogels'
+import {each, doUntil} from 'async'
+import {define, Model, Queries} from 'vogels'
 
-import * as AWS from 'aws-sdk'
-import * as awsFactory from '../aws/factory'
+import {ClientConfig, DynamoDB} from 'aws-sdk'
+import {createDynamoClient} from '../aws/factory'
 
-const createModel = (tableName: string, dynamodb: AWS.DynamoDB) => {
-  const Cluster = vogels.define('Cluster', schema => {
-    schema.String('type', {hashKey: true})
-    schema.String('id', {rangeKey: true})
+const createModel = (tableName: string, dynamodb: DynamoDB) => {
+  const Cluster = define('Cluster', schema => {
+    schema.String('type', { hashKey: true })
+    schema.String('id', { rangeKey: true })
     schema.Number('activeConsumers').required()
     schema.Number('expiresAt').required()
   })
 
   Cluster.config({
     tableName: tableName,
-    dynamodb: dynamodb
+    dynamodb: dynamodb,
   })
 
   return Cluster
 }
 
-export class Model {
-  private static DefaultCapacity = {READ: 10, WRITE: 10}
+export class Cluster {
+  private static DefaultCapacity = { READ: 10, WRITE: 10 }
   private static DB_TYPE = 'cluster'
 
   public id: string
-  public Cluster: vogels.Model
+  public Cluster: Model
 
-  public constructor (tableName: string, conf: AWS.ClientConfig, dynamoEndpoint?: string) {
-    this.id = [os.hostname(), process.pid, Date.now()].join('@')
+  public constructor(tableName: string, conf: ClientConfig, dynamoEndpoint?: string) {
+    this.id = [hostname(), process.pid, Date.now()].join('@')
 
-    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+    const dynamodb = createDynamoClient(conf, dynamoEndpoint)
     this.Cluster = createModel(tableName, dynamodb)
   }
 
-  public reportActiveConsumers (activeConsumers: number, callback: (e: any) => void) {
+  public reportActiveConsumers(activeConsumers: number, callback: (e: any) => void) {
     this.Cluster.update({
-      type: Model.DB_TYPE,
+      type: Cluster.DB_TYPE,
       id: this.id,
       expiresAt: Date.now() + (1000 * 15),
-      activeConsumers: activeConsumers
+      activeConsumers: activeConsumers,
     }, callback)
   }
 
-  public fetchAll (callback: (err: any, data: vogels.Queries.Query.Result) => void) {
-    this.Cluster.query(Model.DB_TYPE)
+  public fetchAll(callback: (err: any, data: Queries.Query.Result) => void) {
+    this.Cluster.query(Cluster.DB_TYPE)
       .filter('expiresAt').gt(Date.now())
       .loadAll()
       .exec(callback)
   }
 
-  public garbageCollect (callback: (err: any, data?: vogels.Queries.Item[]) => void) {
-    this.Cluster.query(Model.DB_TYPE)
+  public garbageCollect(callback: (err: any, data?: Queries.Item[]) => void) {
+    this.Cluster.query(Cluster.DB_TYPE)
       .filter('expiresAt').lt(Date.now())
       .loadAll()
       .exec((err, clusters) => {
@@ -61,7 +61,7 @@ export class Model {
           return callback(err)
         }
 
-        async.each(clusters.Items, (cluster, done) => {
+        each(clusters.Items, (cluster, done) => {
           this.Cluster.destroy('cluster', cluster.get('id'), done)
         }, err => {
           if (err) {
@@ -73,24 +73,23 @@ export class Model {
       })
   }
 
-  public static createTable (name: string, conf: AWS.ClientConfig, capacity: Capacity,
-    dynamoEndpoint: string, callback: (e: any) => void)
-  {
-    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+  public static createTable(name: string, conf: ClientConfig, capacity: Capacity,
+    dynamoEndpoint: string, callback: (e: any) => void) {
+    const dynamodb = createDynamoClient(conf, dynamoEndpoint)
 
     const model = createModel(name, dynamodb)
     let tableStatus
 
     model.createTable({
-      readCapacity: capacity.read || Model.DefaultCapacity.READ,
-      writeCapacity: capacity.write || Model.DefaultCapacity.WRITE
+      readCapacity: capacity.read || Cluster.DefaultCapacity.READ,
+      writeCapacity: capacity.write || Cluster.DefaultCapacity.WRITE,
     }, err => {
       if (err) {
         return callback(err)
       }
 
-      async.doUntil(done => {
-        model.describeTable(function (err, data) {
+      doUntil(done => {
+        model.describeTable(function(err, data) {
           if (err) {
             return done(err)
           }
@@ -104,10 +103,9 @@ export class Model {
     })
   }
 
-  public static tableExists (name: string, conf: AWS.ClientConfig, dynamoEndpoint: string,
-    callback: (err: any, data?: Boolean) => void)
-  {
-    const dynamodb = awsFactory.dynamo(conf, dynamoEndpoint)
+  public static tableExists(name: string, conf: ClientConfig, dynamoEndpoint: string,
+    callback: (err: any, data?: Boolean) => void) {
+    const dynamodb = createDynamoClient(conf, dynamoEndpoint)
 
     createModel(name, dynamodb).describeTable(err => {
       if (err && err.code === 'ResourceNotFoundException') {

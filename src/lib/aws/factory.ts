@@ -1,7 +1,7 @@
-import * as AWS from 'aws-sdk'
+import {ClientConfig, DynamoDB, Kinesis} from 'aws-sdk'
 
-const kinesis = (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kinesis => {
-  const instance = new AWS.Kinesis(awsConfig || {})
+export const createKinesisClient = (conf: ClientConfig, endpoint?: string): Kinesis => {
+  const instance = new Kinesis(conf || {})
   if (endpoint) {
     instance.setEndpoint(endpoint)
   }
@@ -9,13 +9,11 @@ const kinesis = (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.Kinesis => 
   return instance
 }
 
-const dynamo = (awsConfig:AWS.ClientConfig, endpoint?:string) : AWS.DynamoDB => {
-  const instance = new AWS.DynamoDB(awsConfig || {})
+export const createDynamoClient = (conf: ClientConfig, endpoint?: string): DynamoDB => {
+  const instance = new DynamoDB(conf || {})
   if (endpoint) {
     instance.setEndpoint(endpoint)
   }
 
   return instance
 }
-
-export {kinesis, dynamo}

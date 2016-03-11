@@ -1,4 +1,4 @@
-const config = {
+export default {
   shutdownMessage: 'shutdown',
   localDynamoDBEndpoint: {
     protocol: 'http',
@@ -11,5 +11,3 @@ const config = {
     port: '4567'
   }
 }
-
-export default config

@@ -1,17 +1,17 @@
-import * as AWS from 'aws-sdk'
-import * as async from 'async'
+import {Kinesis} from 'aws-sdk'
+import {auto, doUntil} from 'async'
 
 export class Stream {
   private name: string
-  private kinesis: AWS.Kinesis
+  private kinesis: Kinesis
 
-  constructor(name: string, kinesis: AWS.Kinesis) {
+  constructor(name: string, kinesis: Kinesis) {
     this.name = name
     this.kinesis = kinesis
   }
 
-  public exists (callback) {
-    this.describe(function (err) {
+  public exists(callback) {
+    this.describe(function(err) {
       if (err && err.code === 'ResourceNotFoundException') {
         return callback(null, false)
       }
@@ -22,9 +22,9 @@ export class Stream {
     })
   }
 
-  public onActive (callback) {
-    let state = {isActive: false, isDeleting: false}
-    async.auto({
+  public onActive(callback) {
+    let state = { isActive: false, isDeleting: false }
+    auto({
       isActive: done => {
         this.isActive((err, isActive) => {
           state.isActive = isActive
@@ -37,11 +37,11 @@ export class Stream {
           return done()
         }
 
-        this.isDeleting(function (err, isDeleting) {
+        this.isDeleting(function(err, isDeleting) {
           state.isDeleting = isDeleting
           done(err)
         })
-      }]
+      }],
     }, err => {
       if (err) {
         return callback(err)
@@ -56,7 +56,7 @@ export class Stream {
       }
 
       let isActive
-      async.doUntil(done => {
+      doUntil(done => {
         this.isActive((err, _isActive) => {
           if (err) {
             return done(err)
@@ -71,16 +71,16 @@ export class Stream {
     })
   }
 
-  public isActive (callback) {
+  public isActive(callback) {
     this.hasStatus('ACTIVE', callback)
   }
 
-  public isDeleting (callback) {
+  public isDeleting(callback) {
     this.hasStatus('DELETING', callback)
   }
 
-  private hasStatus (status, callback) {
-    this.describe(function (err, description) {
+  private hasStatus(status, callback) {
+    this.describe(function(err, description) {
       if (err) {
         return callback(err)
       }
@@ -90,7 +90,7 @@ export class Stream {
     })
   }
 
-  private describe (callback) {
-    this.kinesis.describeStream({StreamName: this.name}, callback)
+  private describe(callback) {
+    this.kinesis.describeStream({ StreamName: this.name }, callback)
   }
 }

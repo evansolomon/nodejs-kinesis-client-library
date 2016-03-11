@@ -1,8 +1,11 @@
-import async = require('async')
-import AWS = require('aws-sdk')
+import {doUntil} from 'async'
+import {Kinesis, kinesis} from 'aws-sdk'
 
-export interface ListShardsCallback {(err: any, data?: AWS.kinesis.Shard[]): void}
-const listShards = (client: AWS.Kinesis, stream: string, callback: ListShardsCallback) => {
+export interface ListShardsCallback {
+  (err: any, data?: kinesis.Shard[]): void
+}
+
+export const listShards = (client: Kinesis, stream: string, callback: ListShardsCallback) => {
   let shards = []
   let foundAllShards = false
   var startShardId
@@ -10,15 +13,15 @@ const listShards = (client: AWS.Kinesis, stream: string, callback: ListShardsCal
   function next(done) {
     const params = {
       StreamName: stream,
-      ExclusiveStartShardId: startShardId
+      ExclusiveStartShardId: startShardId,
     }
 
-    client.describeStream(params, function (err, data) {
+    client.describeStream(params, function(err, data) {
       if (err) {
         return done(err)
       }
 
-      if (! data.StreamDescription.HasMoreShards) {
+      if (!data.StreamDescription.HasMoreShards) {
         foundAllShards = true
       }
 
@@ -31,7 +34,7 @@ const listShards = (client: AWS.Kinesis, stream: string, callback: ListShardsCal
   }
 
   const test = () => {
-    return !! foundAllShards
+    return !!foundAllShards
   }
 
   const finish = err => {
@@ -41,7 +44,5 @@ const listShards = (client: AWS.Kinesis, stream: string, callback: ListShardsCal
     callback(null, shards)
   }
 
-  async.doUntil(next, test, finish)
+  doUntil(next, test, finish)
 }
-
-export {listShards}

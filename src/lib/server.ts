@@ -1,9 +1,9 @@
-import * as http from 'http'
+import {createServer} from 'http'
 
-const responseHeaders = {'Content-Type': 'text/plain'}
+const responseHeaders = { 'Content-Type': 'text/plain' }
 
-const create = (port: number|string, callback: () => Stringable) => {
-  const server = http.createServer((req, res) => {
+export const create = (port: number | string, callback: () => Stringable) => {
+  const server = createServer((req, res) => {
     try {
       const response = callback()
       res.writeHead(200, responseHeaders)
@@ -20,5 +20,3 @@ const create = (port: number|string, callback: () => Stringable) => {
 export interface Stringable {
   toString: () => string
 }
-
-export {create}

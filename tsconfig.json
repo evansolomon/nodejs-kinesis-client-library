@@ -1,0 +1,20 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "target": "es5",
+    "outDir": "./build",
+    "declaration": true
+  },
+  "formatCodeOptions": {
+    "indentSize": 2,
+    "tabSize": 2
+  },
+  "exclude": [
+    "node_modules",
+    "build",
+    "test"
+  ],
+  "atom": {
+    "formatOnSave": true
+  }
+}
