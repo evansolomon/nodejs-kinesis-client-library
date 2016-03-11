@@ -419,7 +419,7 @@ export class ConsumerCluster extends EventEmitter {
     this.logger.info('Starting external network fetch loop')
 
     const fetchThenWait = done => {
-      this.fetchExternalNetwork(function(err) {
+      this.fetchExternalNetwork(err => {
         if (err) {
           return done(err)
         }

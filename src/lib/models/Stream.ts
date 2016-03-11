@@ -11,7 +11,7 @@ export class Stream {
   }
 
   public exists(callback) {
-    this.describe(function(err) {
+    this.describe(err => {
       if (err && err.code === 'ResourceNotFoundException') {
         return callback(null, false)
       }
@@ -37,7 +37,7 @@ export class Stream {
           return done()
         }
 
-        this.isDeleting(function(err, isDeleting) {
+        this.isDeleting((err, isDeleting) => {
           state.isDeleting = isDeleting
           done(err)
         })
@@ -80,7 +80,7 @@ export class Stream {
   }
 
   private hasStatus(status, callback) {
-    this.describe(function(err, description) {
+    this.describe((err, description) => {
       if (err) {
         return callback(err)
       }

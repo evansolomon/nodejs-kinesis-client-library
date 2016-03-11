@@ -74,9 +74,9 @@ export class Cluster {
   }
 
   public static createTable(name: string, conf: ClientConfig, capacity: Capacity,
-    dynamoEndpoint: string, callback: (e: any) => void) {
+    dynamoEndpoint: string, callback: (e: any) => void
+  ) {
     const dynamodb = createDynamoClient(conf, dynamoEndpoint)
-
     const model = createModel(name, dynamodb)
     let tableStatus
 
@@ -89,7 +89,7 @@ export class Cluster {
       }
 
       doUntil(done => {
-        model.describeTable(function(err, data) {
+        model.describeTable((err, data) => {
           if (err) {
             return done(err)
           }

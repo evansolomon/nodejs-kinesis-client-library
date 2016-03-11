@@ -10,13 +10,13 @@ export const listShards = (client: Kinesis, stream: string, callback: ListShards
   let foundAllShards = false
   var startShardId
 
-  function next(done) {
+  const next = done => {
     const params = {
       StreamName: stream,
       ExclusiveStartShardId: startShardId,
     }
 
-    client.describeStream(params, function(err, data) {
+    client.describeStream(params, (err, data) => {
       if (err) {
         return done(err)
       }
@@ -33,14 +33,13 @@ export const listShards = (client: Kinesis, stream: string, callback: ListShards
     })
   }
 
-  const test = () => {
-    return !!foundAllShards
-  }
+  const test = () => !!foundAllShards
 
   const finish = err => {
     if (err) {
       return callback(err)
     }
+
     callback(null, shards)
   }
 

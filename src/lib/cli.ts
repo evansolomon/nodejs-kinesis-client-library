@@ -183,7 +183,7 @@ auto({
       }
 
       done()
-      done = function() { }
+      done = () => { /* Don't call twice */ }
       clearTimeout(timer)
     })
   },
