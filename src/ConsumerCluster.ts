@@ -3,9 +3,9 @@ import {Worker, fork, setupMaster} from 'cluster'
 import {join} from 'path'
 import {format as formatUrl} from 'url'
 
-import {difference, pluck, without} from 'underscore'
+import {without} from 'underscore'
 import {auto, parallel, each, forever} from 'async'
-import {ClientConfig, Kinesis} from 'aws-sdk'
+import {ClientConfig, Kinesis, kinesis} from 'aws-sdk'
 import {Logger, createLogger} from 'bunyan'
 import {Queries} from 'vogels'
 
@@ -251,7 +251,10 @@ export class ConsumerCluster extends EventEmitter {
   // Fetch data about unleased shards.
   private fetchAvailableShard() {
     // Hack around typescript
-    var _asyncResults = <{ allShardIds: string[]; leases: Queries.Query.Result; }>{}
+    var _asyncResults = <{
+      shards: kinesis.Shard[];
+      leases: Queries.Query.Result;
+    }>{}
 
     parallel({
       allShardIds: done => {
@@ -260,8 +263,7 @@ export class ConsumerCluster extends EventEmitter {
             return done(err)
           }
 
-          const shardIds = pluck(shards, 'ShardId')
-          _asyncResults.allShardIds = shardIds
+          _asyncResults.shards = shards
           done()
         })
       },
@@ -282,8 +284,7 @@ export class ConsumerCluster extends EventEmitter {
         return this.logAndEmitError(err, 'Error fetching available shards')
       }
 
-      const allShardIds = _asyncResults.allShardIds
-      const leases = _asyncResults.leases
+      const {shards, leases} = _asyncResults
       const leaseItems = leases.Items
 
       const finishedShardIds = leaseItems.filter(lease => {
@@ -292,14 +293,39 @@ export class ConsumerCluster extends EventEmitter {
         return <string>lease.get('id')
       })
 
-      const allUnfinishedShardIds = allShardIds.filter(id => {
-        return finishedShardIds.indexOf(id) === -1
+      const allUnfinishedShardIds = shards.filter(shard => {
+        return finishedShardIds.indexOf(shard.ShardId) === -1
       })
 
-      const leasedShardIds = leaseItems.map(item => {
+      const leasedShardIds: Array<string> = leaseItems.map(item => {
         return item.get('id')
       })
-      const newShardIds = difference(allUnfinishedShardIds, leasedShardIds)
+
+      let newShardIds = []
+      allUnfinishedShardIds.filter(shard => {
+
+        // skip already leased shards
+        if (leasedShardIds.indexOf(shard.ShardId) >= 0) {
+          return false
+        }
+
+        // skip if parent shard is not finished (split case)
+        if (shard.ParentShardId && !(finishedShardIds.indexOf(shard.ParentShardId) >= 0)) {
+          this.logger.info({ ParentShardId: shard.ParentShardId, ShardId: shard.ShardId },
+            'Ignoring shard because ParentShardId is not finished')
+          return false
+        }
+
+        // skip if adjacent parent shard is not finished (merge case)
+        if (shard.AdjacentParentShardId && !(finishedShardIds.indexOf(shard.AdjacentParentShardId) >= 0)) {
+          this.logger.info({ AdjacentParentShardId: shard.AdjacentParentShardId, ShardId: shard.ShardId },
+            'Ignoring shard because AdjacentParentShardId is not finished')
+          return false
+        }
+
+        newShardIds.push(shard)
+        return true
+      })
 
       // If there are shards theat have not been leased, pick one
       if (newShardIds.length > 0) {
