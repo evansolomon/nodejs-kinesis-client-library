@@ -63,9 +63,6 @@ describe('Kinesis Client Library', function () {
 
     // Give an arbitrarily large amount of time for all the consumers to spin up
     setTimeout(function () {
-      var spawns = stdout.match(/Spawning consumer/g)
-      assert.equal(spawns.length, helpers.kinesalite.shardCount, 'Should create one consumer per shard')
-
       var lyrics = stdout.match(/Line: /g)
       assert.equal(lyrics.length, helpers.fixtures.records.length, 'Write one line per lyric')
       done()
