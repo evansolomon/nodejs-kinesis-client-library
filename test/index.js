@@ -57,6 +57,7 @@ describe('Kinesis Client Library', function () {
 
     var stdout = ''
     var proc = helpers.consumer.launch('print')
+    proc.stdout.pipe(process.stdout)
     proc.stdout.on('data', function (chunk) {
       stdout += chunk
     })
