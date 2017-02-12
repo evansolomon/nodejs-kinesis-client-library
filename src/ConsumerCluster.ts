@@ -3,7 +3,7 @@ import {Worker, fork, setupMaster} from 'cluster'
 import {join} from 'path'
 import {format as formatUrl} from 'url'
 
-import {without} from 'underscore'
+import {without, find} from 'underscore'
 import {auto, parallel, each, forever} from 'async'
 import {ClientConfig, Kinesis, kinesis} from 'aws-sdk'
 import {Logger, createLogger} from 'bunyan'
@@ -296,8 +296,7 @@ export class ConsumerCluster extends EventEmitter {
         return item.get('id')
       })
 
-      let newShards = []
-      allUnfinishedShards.forEach(shard => {
+      const newShards = allUnfinishedShards.filter(shard => {
 
         // skip already leased shards
         if (leasedShardIds.indexOf(shard.ShardId) >= 0) {
@@ -318,7 +317,6 @@ export class ConsumerCluster extends EventEmitter {
           return false
         }
 
-        newShards.push(shard)
         return true
       })
 
@@ -329,18 +327,21 @@ export class ConsumerCluster extends EventEmitter {
       }
 
       // Try to find the first expired lease
-      let currentLease
-      for (var i = 0; i < leaseItems.length; i++) {
-        currentLease = leaseItems[i]
-        if (currentLease.get('expiresAt') > Date.now()) {
-          continue
-        }
-        if (currentLease.get('isFinished')) {
-          continue
+      const firstExpiredLease = find(leaseItems, leaseItem => {
+        if (leaseItem.get('expiresAt') > Date.now()) {
+          return false
         }
 
-        let shardId = currentLease.get('id')
-        let leaseCounter = currentLease.get('leaseCounter')
+        if (leaseItem.get('isFinished')) {
+          return false
+        }
+
+        return true
+      })
+
+      if (firstExpiredLease) {
+        let shardId = firstExpiredLease.get('id')
+        let leaseCounter = firstExpiredLease.get('leaseCounter')
         this.logger.info({ shardId: shardId, leaseCounter: leaseCounter }, 'Found available shard')
         this.consumeAvailableShard(shardId, leaseCounter);
       }
