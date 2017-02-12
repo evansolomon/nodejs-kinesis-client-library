@@ -129,7 +129,6 @@ export class ConsumerCluster extends EventEmitter {
         return this.logAndEmitError(err, 'Error ensuring Dynamo table exists')
       }
 
-      this.bindListeners()
       this.loopReportClusterToNetwork()
       this.loopFetchExternalNetwork()
     })
@@ -175,32 +174,28 @@ export class ConsumerCluster extends EventEmitter {
     createServer(port, () => this.consumerIds.length)
   }
 
-  private bindListeners() {
-    this.on('updateNetwork', () => {
-      this.garbageCollectClusters()
+  private onAvailableShard(shardId: string, leaseCounter: number) {
+    // Stops accepting consumers, since the cluster will be reset based one an error
+    if (this.isShuttingDownFromError) {
+      return
+    }
 
-      if (this.shouldTryToAcquireMoreShards()) {
-        this.logger.debug('Should try to acquire more shards')
-        this.fetchAvailableShard()
-      } else if (this.hasTooManyShards()) {
-        this.logger.debug({ consumerIds: this.consumerIds }, 'Have too many shards')
-        this.killConsumer(err => {
-          if (err) {
-            this.logAndEmitError(err)
-          }
-        })
-      }
-    })
+    this.spawn(shardId, leaseCounter)
+  }
 
-    this.on('availableShard', (shard, leaseCounter) => {
-      // Stops accepting consumers, since the cluster will be reset based one an error
-      if (this.isShuttingDownFromError) {
-        return
-      }
-
-      this.spawn(shard.ShardId, leaseCounter)
-    })
-
+  private onUpdateNetwork() {
+    this.garbageCollectClusters()
+    if (this.shouldTryToAcquireMoreShards()) {
+      this.logger.debug('Should try to acquire more shards')
+      this.fetchAvailableShard()
+    } else if (this.hasTooManyShards()) {
+      this.logger.debug({ consumerIds: this.consumerIds }, 'Have too many shards')
+      this.killConsumer(err => {
+        if (err) {
+          this.logAndEmitError(err)
+        }
+      })
+    }
   }
 
   // Compare cluster state to external network to figure out if we should try to change our shard allocation.
@@ -330,7 +325,7 @@ export class ConsumerCluster extends EventEmitter {
       // If there are shards theat have not been leased, pick one
       if (newShards.length > 0) {
         this.logger.info({ newShards: newShards }, 'Unleased shards available')
-        return this.emit('availableShard', newShards[0], null)
+        return this.onAvailableShard(newShards[0].ShardId, null)
       }
 
       // Try to find the first expired lease
@@ -347,7 +342,7 @@ export class ConsumerCluster extends EventEmitter {
         let shardId = currentLease.get('id')
         let leaseCounter = currentLease.get('leaseCounter')
         this.logger.info({ shardId: shardId, leaseCounter: leaseCounter }, 'Found available shard')
-        return this.emit('availableShard', shardId, leaseCounter)
+        this.onAvailableShard(shardId, leaseCounter);
       }
     })
   }
@@ -475,7 +470,7 @@ export class ConsumerCluster extends EventEmitter {
       }, {})
 
       this.logger.debug({ externalNetwork: this.externalNetwork }, 'Updated external network')
-      this.emit('updateNetwork')
+      this.onUpdateNetwork()
       callback()
     })
   }
