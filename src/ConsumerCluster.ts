@@ -174,7 +174,7 @@ export class ConsumerCluster extends EventEmitter {
     createServer(port, () => this.consumerIds.length)
   }
 
-  private onAvailableShard(shardId: string, leaseCounter: number) {
+  private consumeAvailableShard(shardId: string, leaseCounter: number) {
     // Stops accepting consumers, since the cluster will be reset based one an error
     if (this.isShuttingDownFromError) {
       return
@@ -183,7 +183,7 @@ export class ConsumerCluster extends EventEmitter {
     this.spawn(shardId, leaseCounter)
   }
 
-  private onUpdateNetwork() {
+  private updateNetwork() {
     this.garbageCollectClusters()
     if (this.shouldTryToAcquireMoreShards()) {
       this.logger.debug('Should try to acquire more shards')
@@ -325,7 +325,7 @@ export class ConsumerCluster extends EventEmitter {
       // If there are shards theat have not been leased, pick one
       if (newShards.length > 0) {
         this.logger.info({ newShards: newShards }, 'Unleased shards available')
-        return this.onAvailableShard(newShards[0].ShardId, null)
+        return this.consumeAvailableShard(newShards[0].ShardId, null)
       }
 
       // Try to find the first expired lease
@@ -342,7 +342,7 @@ export class ConsumerCluster extends EventEmitter {
         let shardId = currentLease.get('id')
         let leaseCounter = currentLease.get('leaseCounter')
         this.logger.info({ shardId: shardId, leaseCounter: leaseCounter }, 'Found available shard')
-        this.onAvailableShard(shardId, leaseCounter);
+        this.consumeAvailableShard(shardId, leaseCounter);
       }
     })
   }
@@ -470,7 +470,7 @@ export class ConsumerCluster extends EventEmitter {
       }, {})
 
       this.logger.debug({ externalNetwork: this.externalNetwork }, 'Updated external network')
-      this.onUpdateNetwork()
+      this.updateNetwork()
       callback()
     })
   }
