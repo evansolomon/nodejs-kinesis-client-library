@@ -192,13 +192,13 @@ export class ConsumerCluster extends EventEmitter {
       }
     })
 
-    this.on('availableShard', (shardId, leaseCounter) => {
+    this.on('availableShard', (shard, leaseCounter) => {
       // Stops accepting consumers, since the cluster will be reset based one an error
       if (this.isShuttingDownFromError) {
         return
       }
 
-      this.spawn(shardId, leaseCounter)
+      this.spawn(shard.ShardId, leaseCounter)
     })
 
   }
@@ -293,7 +293,7 @@ export class ConsumerCluster extends EventEmitter {
         return <string>lease.get('id')
       })
 
-      const allUnfinishedShardIds = shards.filter(shard => {
+      const allUnfinishedShards = shards.filter(shard => {
         return finishedShardIds.indexOf(shard.ShardId) === -1
       })
 
@@ -301,8 +301,8 @@ export class ConsumerCluster extends EventEmitter {
         return item.get('id')
       })
 
-      let newShardIds = []
-      allUnfinishedShardIds.filter(shard => {
+      let newShards = []
+      allUnfinishedShards.forEach(shard => {
 
         // skip already leased shards
         if (leasedShardIds.indexOf(shard.ShardId) >= 0) {
@@ -323,14 +323,14 @@ export class ConsumerCluster extends EventEmitter {
           return false
         }
 
-        newShardIds.push(shard)
+        newShards.push(shard)
         return true
       })
 
       // If there are shards theat have not been leased, pick one
-      if (newShardIds.length > 0) {
-        this.logger.info({ newShardIds: newShardIds }, 'Unleased shards available')
-        return this.emit('availableShard', newShardIds[0], null)
+      if (newShards.length > 0) {
+        this.logger.info({ newShards: newShards }, 'Unleased shards available')
+        return this.emit('availableShard', newShards[0], null)
       }
 
       // Try to find the first expired lease
