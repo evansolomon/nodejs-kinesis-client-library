@@ -33,7 +33,7 @@
   ],
   "dependencies": {
     "async": "^0.9.0",
-    "aws-sdk": "^2.0.29",
+    "aws-sdk": "~2.6.0",
     "bunyan": "^1.2.3",
     "kinesalite": "^1.0.2",
     "local-dynamo": "0.0.3",
