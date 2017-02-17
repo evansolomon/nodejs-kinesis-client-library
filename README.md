@@ -88,15 +88,17 @@ A consumer MUST implement either `processRecords` or `processResponse`.
 This consumer uploads records to S3 in 50 megabyte batches.
 
 ```js
+import {S3} from 'aws-sdk'
+import {AbstractConsumer} from 'kinesis-client-library'
+
 // AWS config skipped for brevity
-var s3 = new require('aws-sdk').S3()
-var kcl = require('kinesis-client-library')
+let s3 = new S3()
 
-var newlineBuffer = new Buffer('\n')
+let newlineBuffer = new Buffer('\n')
 
-kcl.AbstractConsumer.extend({
+AbstractConsumer.extend({
   // create places to hold some data about the consumer
-  initialize: function (done) {
+  initialize(done) {
     this.cachedRecords = []
     this.cachedRecordsSize = 0
     // This MUST be called or processing will never start
@@ -104,16 +106,16 @@ kcl.AbstractConsumer.extend({
     done()
   },
 
-  processRecords: function (records, done) {
+  processRecords(records, done) {
     // Put each record into our list of cached records (separated by newlines) and update the size
-    records.forEach(function (record) {
+    records.forEach(record => {
       this.cachedRecords.push(record.Data)
       this.cachedRecords.push(newlineBuffer)
       this.cachedRecordsSize += (record.Data.length + newlineBuffer.length)
-    }.bind(this))
+    })
 
     // not very good for performance
-    var shouldCheckpoint = this.cachedRecordsSize > 50000000
+    let shouldCheckpoint = this.cachedRecordsSize > 50000000
 
     // Get more records, but not save a checkpoint
     if (! shouldCheckpoint) return done()
@@ -123,7 +125,7 @@ kcl.AbstractConsumer.extend({
       Bucket: 'my-bucket-name',
       Key: 'path/to/records/' + Date.now(),
       Body: Buffer.concat(this.cachedRecords)
-    }, function (err)  {
+    }, err =>  {
       if (err) return done(err)
 
       this.cachedRecords = []
@@ -131,7 +133,7 @@ kcl.AbstractConsumer.extend({
 
       // Pass `true` to checkpoint the latest record we've received
       done(null, true)
-    }.bind(this))
+    })
   }
 })
 ```
