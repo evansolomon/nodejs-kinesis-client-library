@@ -19,7 +19,7 @@ I had a stack in Node.js. Working with and deploying a Java app just to consume 
 
 ## Terminology
 
-* **Consumer**: A single process that is responsible for consuming a single Kinesis shard. Consumers are created and managed by clusters; they should not be created directly directly.
+* **Consumer**: A single process that is responsible for consuming a single Kinesis shard. Consumers are created and managed by clusters; they should not be created directly.
 * **Cluster**: A process that manages consumers. A single cluster can have many consumers (or 1, or 0) that all run on the same machine.  Clusters should be created by the [CLI](#cli).
 * **Network**: All of the consumers processing a single Kinesis stream for a single application. Networks can have many clusters that are run on one or many machines.
 
